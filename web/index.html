@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="مُعين — مساعد الأستاذ">
+  <title>مُعين — مساعد الأستاذ</title>
+
+  <!-- التثبيت على الشاشة الرئيسية (آيفون وأندرويد) -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#3D2B86">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="مُعين">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <script src="https://unpkg.com/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+</head>
+<body>
+  <script>
+    // ---------------------------------------------------------------------
+    // قراءة أسماء الطلاب من الصور (Tesseract.js) — تُستدعى من Dart: moeenOcr
+    // ---------------------------------------------------------------------
+
+    // عاملا قراءة يُعاد استخدامهما (ملفات اللغة تُحمّل مرة واحدة فقط):
+    // - 'ara+eng': يقرأ الأسماء والأرقام الوطنية والتسلسل بدقة.
+    // - 'ara': احتياطي لأي سطر عربي قرأه الأول خطأً بحروف لاتينية.
+    var _moeenWorkers = {};
+    function _moeenWorker(lang) {
+      if (!_moeenWorkers[lang]) {
+        _moeenWorkers[lang] = (async function () {
+          var worker = await Tesseract.createWorker();
+          await worker.loadLanguage(lang);
+          await worker.initialize(lang);
+          await worker.setParameters({
+            tessedit_pageseg_mode: '6',
+            preserve_interword_spaces: '1',
+          });
+          return worker;
+        })().catch(function (e) {
+          delete _moeenWorkers[lang];
+          throw e;
+        });
+      }
+      return _moeenWorkers[lang];
+    }
+
+    // تحسين الصورة قبل القراءة:
+    // 1) تطبيق التدوير الذي اختاره الأستاذ واتجاه الكاميرا.
+    // 2) تكبير الصور الصغيرة وتصغير الكبيرة جداً.
+    // 3) إزالة الظلال وعدم تجانس الإضاءة (تقدير لون الورقة لكل منطقة).
+    // 4) رفع التباين وتحويلها إلى رمادي.
+    async function _moeenPrepareImage(bytes, quarterTurns) {
+      var bmp = await createImageBitmap(new Blob([bytes]), { imageOrientation: 'from-image' });
+      var longSide = Math.max(bmp.width, bmp.height);
+      var scale = 1;
+      if (longSide < 1800) scale = 1800 / longSide;
+      else if (longSide > 3000) scale = 3000 / longSide;
+      var sw = Math.round(bmp.width * scale), sh = Math.round(bmp.height * scale);
+      var turns = ((quarterTurns % 4) + 4) % 4;
+      var cw = turns % 2 ? sh : sw, ch = turns % 2 ? sw : sh;
+
+      var canvas = document.createElement('canvas');
+      canvas.width = cw; canvas.height = ch;
+      var ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.imageSmoothingQuality = 'high';
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, cw, ch);
+      ctx.translate(cw / 2, ch / 2);
+      ctx.rotate(turns * Math.PI / 2);
+      ctx.drawImage(bmp, -sw / 2, -sh / 2, sw, sh);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      if (bmp.close) bmp.close();
+
+      // تنعيم خفيف لإزالة تشويش الكاميرا قبل المعالجة.
+      var soft = document.createElement('canvas');
+      soft.width = cw; soft.height = ch;
+      var softCtx = soft.getContext('2d', { willReadFrequently: true });
+      softCtx.filter = 'blur(0.6px)';
+      softCtx.drawImage(canvas, 0, 0);
+      var img = softCtx.getImageData(0, 0, cw, ch), d = img.data, n = cw * ch;
+      var gray = new Float32Array(n);
+      for (var i = 0, j = 0; i < n; i++, j += 4) {
+        gray[i] = 0.299 * d[j] + 0.587 * d[j + 1] + 0.114 * d[j + 2];
+      }
+
+      // لون الورقة: أفتح قيمة في كل مربع 32×32 ثم تنعيمها وتكبيرها.
+      var B = 32, bw = Math.ceil(cw / B), bh = Math.ceil(ch / B);
+      var small = document.createElement('canvas');
+      small.width = bw; small.height = bh;
+      var sctx = small.getContext('2d', { willReadFrequently: true });
+      var sImg = sctx.createImageData(bw, bh);
+      for (var by = 0; by < bh; by++) {
+        for (var bx = 0; bx < bw; bx++) {
+          var max = 0;
+          for (var y = by * B; y < Math.min(ch, (by + 1) * B); y += 2) {
+            for (var x = bx * B; x < Math.min(cw, (bx + 1) * B); x += 2) {
+              var g = gray[y * cw + x];
+              if (g > max) max = g;
+            }
+          }
+          var k = (by * bw + bx) * 4;
+          sImg.data[k] = sImg.data[k + 1] = sImg.data[k + 2] = max;
+          sImg.data[k + 3] = 255;
+        }
+      }
+      sctx.putImageData(sImg, 0, 0);
+      var bgCanvas = document.createElement('canvas');
+      bgCanvas.width = cw; bgCanvas.height = ch;
+      var bctx = bgCanvas.getContext('2d', { willReadFrequently: true });
+      bctx.imageSmoothingQuality = 'high';
+      bctx.filter = 'blur(' + Math.round(B / 2) + 'px)';
+      bctx.drawImage(small, 0, 0, cw, ch);
+      var bg = bctx.getImageData(0, 0, cw, ch).data;
+
+      // تطبيع الإضاءة: كل بكسل نسبةً إلى لون الورقة حوله، والورقة تصبح بيضاء.
+      var hist = new Uint32Array(256);
+      for (var i2 = 0, j2 = 0; i2 < n; i2++, j2 += 4) {
+        var v = gray[i2] / Math.max(40, bg[j2]) * 255;
+        if (v > 255) v = 255;
+        gray[i2] = v;
+        hist[v | 0]++;
+      }
+      // مدّ التباين بلطف دون تضخيم سماكة الحروف.
+      var acc = 0, lo = 0, loT = n * 0.005;
+      for (var h = 0; h < 256; h++) {
+        acc += hist[h];
+        if (acc <= loT) lo = h;
+      }
+      var hi = 235;
+      if (hi < lo + 60) lo = Math.max(0, hi - 60);
+      var ink = new Uint8Array(n);
+      for (var i3 = 0; i3 < n; i3++) {
+        var out = (gray[i3] - lo) * 255 / (hi - lo);
+        out = out < 0 ? 0 : (out > 255 ? 255 : out);
+        gray[i3] = out;
+        ink[i3] = out < 140 ? 1 : 0;
+      }
+
+      // حذف خطوط الجداول الطويلة (أفقية وعمودية) لأنها تربك القراءة.
+      var minH = Math.round(cw * 0.25), minV = Math.round(ch * 0.15);
+      var erase = new Uint8Array(n);
+      for (var y2 = 0; y2 < ch; y2++) {
+        var run = 0;
+        for (var x2 = 0; x2 <= cw; x2++) {
+          if (x2 < cw && ink[y2 * cw + x2]) { run++; continue; }
+          if (run >= minH) for (var r = x2 - run; r < x2; r++) erase[y2 * cw + r] = 1;
+          run = 0;
+        }
+      }
+      for (var x3 = 0; x3 < cw; x3++) {
+        var run2 = 0;
+        for (var y3 = 0; y3 <= ch; y3++) {
+          if (y3 < ch && ink[y3 * cw + x3]) { run2++; continue; }
+          if (run2 >= minV) for (var r2 = y3 - run2; r2 < y3; r2++) erase[r2 * cw + x3] = 1;
+          run2 = 0;
+        }
+      }
+      for (var i4 = 0, j4 = 0; i4 < n; i4++, j4 += 4) {
+        var px = erase[i4] ? 255 : gray[i4];
+        d[j4] = d[j4 + 1] = d[j4 + 2] = px;
+        d[j4 + 3] = 255;
+      }
+      ctx.putImageData(img, 0, 0);
+      return canvas;
+    }
+
+    function _moeenLines(data) {
+      return (data.lines || []).map(function (l) {
+        // الثقة = متوسط ثقة الكلمات العربية فقط، حتى لا تُخفّضها رموز جانبية.
+        var words = (l.words || []).filter(function (w) {
+          return _moeenArabicCount(w.text || '') >= 2;
+        });
+        var conf = words.length
+          ? words.reduce(function (s, w) { return s + (w.confidence || 0); }, 0) / words.length
+          : (l.confidence || 0);
+        return {
+          text: l.text || '',
+          confidence: conf,
+          y0: l.bbox ? l.bbox.y0 : 0,
+          y1: l.bbox ? l.bbox.y1 : 0,
+        };
+      });
+    }
+
+    function _moeenArabicCount(t) { return (t.match(/[\u0621-\u064A]/g) || []).length; }
+    function _moeenLatinCount(t) { return (t.match(/[A-Za-z]/g) || []).length; }
+    function _moeenDigits(t) { return (t.match(/[0-9\u0660-\u0669]{6,}/g) || []).join(' '); }
+
+    async function _moeenRecognize(lang, canvas) {
+      var worker = await _moeenWorker(lang);
+      await worker.setParameters({ tessedit_pageseg_mode: '6' });
+      var data = (await worker.recognize(canvas)).data;
+      // إذا كانت الثقة منخفضة نجرب طريقة تقسيم أخرى للصفحة ونأخذ الأفضل.
+      if ((data.confidence || 0) < 65) {
+        await worker.setParameters({ tessedit_pageseg_mode: '4' });
+        var alt = (await worker.recognize(canvas)).data;
+        await worker.setParameters({ tessedit_pageseg_mode: '6' });
+        if ((alt.confidence || 0) > (data.confidence || 0)) data = alt;
+      }
+      return data;
+    }
+
+    // bytes: Uint8Array — quarterTurns: عدد أرباع الدورات مع عقارب الساعة.
+    async function moeenOcr(bytes, quarterTurns) {
+      var canvas = await _moeenPrepareImage(bytes, quarterTurns || 0);
+      var main = await _moeenRecognize('ara+eng', canvas);
+      var lines = _moeenLines(main);
+
+      // أسطر قُرئت بحروف لاتينية بدل العربية: نعيد قراءتها بالنموذج العربي.
+      var suspicious = lines.filter(function (l) {
+        return _moeenLatinCount(l.text) >= 3 && _moeenArabicCount(l.text) < 6;
+      });
+      if (suspicious.length) {
+        try {
+          var arabicLines = _moeenLines(await _moeenRecognize('ara', canvas));
+          suspicious.forEach(function (l) {
+            var mid = (l.y0 + l.y1) / 2, best = null, bestDist = 1e9;
+            arabicLines.forEach(function (a) {
+              var am = (a.y0 + a.y1) / 2, dist = Math.abs(am - mid);
+              if (dist < bestDist && dist < Math.max(8, (l.y1 - l.y0) * 0.6)) {
+                best = a; bestDist = dist;
+              }
+            });
+            if (best && _moeenArabicCount(best.text) >= 4) {
+              // الاسم من القراءة العربية والرقم الوطني من القراءة الأولى.
+              var arabicPart = best.text.replace(/[0-9\u0660-\u0669A-Za-z]+/g, ' ');
+              l.text = arabicPart + ' ' + _moeenDigits(l.text);
+              l.confidence = Math.min(best.confidence, 74); // للمراجعة
+            }
+          });
+        } catch (e) { /* نكتفي بالقراءة الأولى */ }
+      }
+
+      return JSON.stringify({
+        confidence: main.confidence || 0,
+        text: main.text || '',
+        lines: lines.map(function (l) { return { text: l.text, confidence: l.confidence }; }),
+      });
+    }
+    window.moeenOcr = moeenOcr;
+
+    // ---------------------------------------------------------------------
+    // طباعة التقارير: مستند HTML مستقل داخل إطار مخفي، بمقاس A4 مضبوط.
+    // ---------------------------------------------------------------------
+    function moeenPrintHtml(html) {
+      var old = document.getElementById('moeen-print-frame');
+      if (old) old.remove();
+      var frame = document.createElement('iframe');
+      frame.id = 'moeen-print-frame';
+      frame.setAttribute('aria-hidden', 'true');
+      frame.style.cssText = 'position:fixed;left:0;bottom:0;width:210mm;height:297mm;border:0;opacity:0;pointer-events:none;z-index:-1;';
+      document.body.appendChild(frame);
+      var doc = frame.contentWindow.document;
+      doc.open();
+      doc.write(html);
+      doc.close();
+      var printed = false;
+      function go() {
+        if (printed) return;
+        printed = true;
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+      }
+      if (doc.fonts && doc.fonts.ready) {
+        doc.fonts.ready.then(function () { setTimeout(go, 200); });
+      }
+      setTimeout(go, 1200);
+    }
+    window.moeenPrintHtml = moeenPrintHtml;
+
+    // للتوافق مع إضافة flutter_tesseract_ocr القديمة.
+    async function _extractText(imagePath, mapData) {
+      var worker = await Tesseract.createWorker();
+      await worker.loadLanguage(mapData.language);
+      await worker.initialize(mapData.language);
+      await worker.setParameters(mapData.args || {});
+      var result = await worker.recognize(imagePath);
+      await worker.terminate();
+      return mapData.args && mapData.args["tessjs_create_hocr"] ? result.data.hocr : result.data.text;
+    }
+  </script>
+  <script>
+    // العمل بدون إنترنت بعد أول فتح (لا يعمل على localhost أثناء التطوير إلا في المتصفح نفسه).
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('moeen_sw.js').catch(function () {});
+      });
+    }
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

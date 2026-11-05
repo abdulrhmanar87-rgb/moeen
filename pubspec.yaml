@@ -1,0 +1,36 @@
+name: moeen
+description: "مُعين — مساعد الأستاذ"
+publish_to: "none"
+version: 2.6.0+16
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.5.3
+  image_picker: ^1.2.3
+  flutter_tesseract_ocr: ^0.4.31
+  file_selector: ^1.1.0
+  http: ^1.5.0
+  archive: ^4.3.0
+  xml: ^7.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/fonts/
+
+  # خط التطبيق: Khalid Art (عريض بطبيعته؛ يُعرَّف بوزن 700 حتى لا يُضاف تعريض صناعي فوقه).
+  fonts:
+    - family: KhalidArt
+      fonts:
+        - asset: assets/fonts/KhalidArt-Bold.ttf
+          weight: 700

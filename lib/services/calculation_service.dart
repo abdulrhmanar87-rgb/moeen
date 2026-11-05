@@ -1,0 +1,240 @@
+import '../core/constants/semesters.dart';
+import '../core/utils/grade_utils.dart';
+import '../core/storage/app_store.dart';
+
+/// تفاصيل سعي الطالب في فصل دراسي واحد (من 100):
+///   معدل الامتحانات الشهرية للفصل  → من [monthlyWeight] (افتراضياً 70)
+/// + معدل الامتحانات اليومية للفصل  → من [dailyWeight]   (افتراضياً 20)
+/// + تقدير السلوك والمشاركة          → من [ratingWeight]  (افتراضياً 10)
+///
+/// الطالب الغائب أو المؤجل في امتحان يُستبعد ذلك الامتحان من معدله.
+class SemesterBreakdown {
+  SemesterBreakdown({
+    required this.semester,
+    required this.monthlyScores,
+    required this.dailyScores,
+    required this.dailyMax,
+    required this.ratingScore,
+    required this.monthlyWeight,
+    required this.dailyWeight,
+    required this.ratingWeight,
+  });
+
+  final int semester;
+
+  /// درجات الامتحانات الشهرية المدخلة (من 100) لكل شهر من أشهر الفصل.
+  final Map<String, double> monthlyScores;
+
+  /// درجات الامتحانات اليومية التي حضرها الطالب (من [dailyMax]).
+  final List<double> dailyScores;
+  final double dailyMax;
+
+  /// تقدير السلوك والمشاركة من 10، أو null إذا لم يُقيَّم.
+  final int? ratingScore;
+
+  final double monthlyWeight;
+  final double dailyWeight;
+  final double ratingWeight;
+
+  double? get monthlyAverage => monthlyScores.isEmpty
+      ? null
+      : monthlyScores.values.reduce((a, b) => a + b) / monthlyScores.length;
+
+  double? get dailyAverage => dailyScores.isEmpty
+      ? null
+      : dailyScores.reduce((a, b) => a + b) / dailyScores.length;
+
+  double? get monthlyPart =>
+      monthlyAverage == null ? null : GradeUtils.clamp(monthlyAverage! * monthlyWeight / 100, 0, monthlyWeight);
+
+  double? get dailyPart =>
+      dailyAverage == null ? null : GradeUtils.clamp(dailyAverage! * dailyWeight / dailyMax, 0, dailyWeight);
+
+  double? get ratingPart =>
+      ratingScore == null ? null : RatingLevels.fraction(ratingScore!) * ratingWeight;
+
+  /// العناصر الناقصة لاكتمال سعي الفصل.
+  List<String> get missing => [
+        if (monthlyWeight > 0 && monthlyAverage == null) 'الامتحانات الشهرية',
+        if (dailyWeight > 0 && dailyAverage == null) 'الامتحانات اليومية',
+        if (ratingWeight > 0 && ratingScore == null) 'تقدير السلوك والمشاركة',
+      ];
+
+  bool get isComplete => missing.isEmpty;
+
+  /// مجموع ما اكتمل حتى الآن (للمتابعة أثناء الفصل).
+  double get partialTotal => (monthlyPart ?? 0) + (dailyPart ?? 0) + (ratingPart ?? 0);
+
+  /// سعي الفصل النهائي (مقرّب)، أو null إذا لم تكتمل عناصره.
+  double? get total => isComplete ? GradeUtils.rawRound(GradeUtils.clamp(partialTotal, 0, 100)) : null;
+}
+
+/// نتيجة الطالب في السنة كاملة، كما تظهر في سجل المدرس.
+class YearResult {
+  const YearResult({
+    this.first,
+    this.midyear,
+    this.second,
+    this.annual,
+    this.finalExam,
+    this.finalGrade,
+    this.completionExam,
+    this.afterCompletion,
+  });
+
+  final double? first;
+  final double? midyear;
+  final double? second;
+
+  /// السعي السنوي = (معدل الفصل الأول + نصف السنة + معدل الفصل الثاني) ÷ 3
+  final double? annual;
+  final double? finalExam;
+
+  /// الدرجة النهائية = (السعي السنوي + الامتحان النهائي) ÷ 2
+  final double? finalGrade;
+  final double? completionExam;
+
+  /// الدرجة بعد الإكمال = (السعي السنوي + امتحان الإكمال) ÷ 2
+  final double? afterCompletion;
+
+  bool get needsCompletion => finalGrade != null && finalGrade! < Semesters.passMark;
+
+  /// ناجح / مكمل / ناجح بالإكمال / راسب، أو فارغ إذا لم تكتمل الدرجات.
+  String get status {
+    if (finalGrade == null) return '';
+    if (finalGrade! >= Semesters.passMark) return 'ناجح';
+    if (afterCompletion == null) return 'مكمل';
+    return afterCompletion! >= Semesters.passMark ? 'ناجح بالإكمال' : 'راسب';
+  }
+}
+
+class CalculationService {
+  CalculationService(this.store);
+
+  final AppStore store;
+
+  double get monthlyWeight => store.weight('monthlyExamsWeight', 70).toDouble();
+  double get dailyWeight => store.weight('dailyExamsWeight', 20).toDouble();
+  double get ratingWeight => store.weight('ratingWeight', 10).toDouble();
+
+  double get dailyExamInputMax {
+    final raw = store.settings['dailyExamInputMax'];
+    final value = raw is num ? raw.toDouble() : double.tryParse(raw?.toString() ?? '');
+    if (value == null || value <= 0) return 10;
+    return value.clamp(1, 100).toDouble();
+  }
+
+  /// نسبة حضور الطالب (معلومة للمتابعة فقط، لا تدخل في السعي).
+  double? attendanceRate(String studentId, String sectionId) {
+    final records = store.attendance
+        .where((a) => a.studentId == studentId && a.sectionId == sectionId)
+        .toList();
+    final required = records.where((r) => r.status != 'مجاز').length;
+    if (required == 0) return null;
+    final present = records.where((r) => r.status == 'حاضر').length;
+    return present / required * 100;
+  }
+
+  /// درجة الامتحان الشهري (من 100)، أو null إذا لم تُدخل أو كان الطالب مؤجلاً.
+  double? monthlyExam(String studentId, String sectionId, String period) {
+    for (final m in store.monthlyScores) {
+      if (m.studentId == studentId && m.sectionId == sectionId && m.period == period) {
+        if (m.status == 'مؤجل' || m.score == null) return null;
+        return m.score!.clamp(0, 100).toDouble();
+      }
+    }
+    return null;
+  }
+
+  /// درجات الامتحانات اليومية التي حضرها الطالب في الفصل.
+  List<double> dailyScores(String studentId, String sectionId, int semester) {
+    final max = dailyExamInputMax;
+    final examIds = store.dailyExams
+        .where((e) => e.sectionId == sectionId && e.semester == semester)
+        .map((e) => e.id)
+        .toSet();
+    return store.dailyScores
+        .where((s) =>
+            examIds.contains(s.examId) &&
+            s.studentId == studentId &&
+            s.status == 'درجة' &&
+            s.score != null)
+        .map((s) => s.score!.clamp(0, max).toDouble())
+        .toList();
+  }
+
+  SemesterBreakdown semester(String studentId, String sectionId, int semester) {
+    final monthly = <String, double>{};
+    for (final period in Semesters.months(semester)) {
+      final score = monthlyExam(studentId, sectionId, period);
+      if (score != null) monthly[period] = score;
+    }
+    return SemesterBreakdown(
+      semester: semester,
+      monthlyScores: monthly,
+      dailyScores: dailyScores(studentId, sectionId, semester),
+      dailyMax: dailyExamInputMax,
+      ratingScore: store.ratingOf(studentId, sectionId, semester),
+      monthlyWeight: monthlyWeight,
+      dailyWeight: dailyWeight,
+      ratingWeight: ratingWeight,
+    );
+  }
+
+  /// سعي الفصل (من 100) أو null إذا لم يكتمل.
+  double? semesterScore(String studentId, String sectionId, int semester) =>
+      this.semester(studentId, sectionId, semester).total;
+
+  /// للتوافق مع التقارير: يحدد الفصل من أسماء الأشهر.
+  double? semesterAverage(String studentId, String sectionId, List<String> periods) {
+    final s = periods.isEmpty ? 1 : Semesters.ofMonth(periods.first);
+    return semesterScore(studentId, sectionId, s == 0 ? 1 : s);
+  }
+
+  /// درجة امتحان نصف السنة، أو null.
+  double? midyear(String studentId, String sectionId) {
+    for (final m in store.midyearScores) {
+      if (m.studentId == studentId && m.sectionId == sectionId) {
+        if (m.score == null || m.status == 'مؤجل') return null;
+        return m.score!.clamp(0, 100).toDouble();
+      }
+    }
+    return null;
+  }
+
+  /// نتيجة السنة كاملة للطالب.
+  YearResult year(String studentId, String sectionId) {
+    final first = semesterScore(studentId, sectionId, 1);
+    final mid = midyear(studentId, sectionId);
+    final second = semesterScore(studentId, sectionId, 2);
+    final annual = annualResult(first: first, midyear: mid, second: second);
+    final finalExam = monthlyExam(studentId, sectionId, Semesters.finalExam);
+    final finalGrade = (annual == null || finalExam == null)
+        ? null
+        : GradeUtils.rawRound((annual + finalExam) / 2);
+    final failed = finalGrade != null && finalGrade < Semesters.passMark;
+    final completion = failed ? monthlyExam(studentId, sectionId, Semesters.completionExam) : null;
+    final afterCompletion = (annual == null || completion == null)
+        ? null
+        : GradeUtils.rawRound((annual + completion) / 2);
+    return YearResult(
+      first: first,
+      midyear: mid,
+      second: second,
+      annual: annual,
+      finalExam: finalExam,
+      finalGrade: finalGrade,
+      completionExam: completion,
+      afterCompletion: afterCompletion,
+    );
+  }
+
+  double? annualResult({
+    required double? first,
+    required double? midyear,
+    required double? second,
+  }) {
+    if (first == null || midyear == null || second == null) return null;
+    return GradeUtils.rawRound((first + midyear + second) / 3);
+  }
+}

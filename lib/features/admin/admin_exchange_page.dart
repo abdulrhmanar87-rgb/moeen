@@ -100,11 +100,37 @@ class _AdminExchangePageState extends State<AdminExchangePage> {
 
   // ---------------------------------------------------------------------------
 
+  bool _setting(String key) => store.settings[key] != false;
+
+  Future<void> _toggle(String key, bool v) async {
+    store.settings[key] = v;
+    await store.saveAll();
+    if (mounted) setState(() {});
+  }
+
   List<Widget> _receiveView() => [
         Text(
           'اختر ملفات الدرجات التي أرسلها المدرسون، ويمكن اختيار عدة ملفات معاً. '
           'كل ملف يحل محل الدرجات السابقة لنفس المادة في نفس الشعبة.',
           style: TextStyle(color: Colors.grey.shade700, height: 1.6),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Column(children: [
+            SwitchListTile(
+              value: _setting('receiveAddStudents'),
+              onChanged: (v) => _toggle('receiveAddStudents', v),
+              title: const Text('إضافة أسماء الطلاب من ملف المدرس'),
+              subtitle: const Text('الطالب الموجود عند المدرس وغير الموجود في الإدارة يُضاف للشعبة مع درجاته، فلا تحتاج لكتابة الأسماء.'),
+            ),
+            const Divider(height: 1),
+            SwitchListTile(
+              value: _setting('receiveCreateSections'),
+              onChanged: (v) => _toggle('receiveCreateSections', v),
+              title: const Text('إنشاء الشعبة إذا لم تكن موجودة'),
+              subtitle: const Text('تُنشأ من الصف والشعبة المكتوبين في ملف المدرس.'),
+            ),
+          ]),
         ),
         const SizedBox(height: 12),
         FilledButton.icon(
@@ -131,7 +157,12 @@ class _AdminExchangePageState extends State<AdminExchangePage> {
     for (final f in files) {
       try {
         final decoded = jsonDecode(await f.readAsString());
-        final r = await ExchangeService.importGradesFile(store, decoded);
+        final r = await ExchangeService.importGradesFile(
+          store,
+          decoded,
+          addMissingStudents: _setting('receiveAddStudents'),
+          createSection: _setting('receiveCreateSections'),
+        );
         lines.add(_ReceiveLine.ok(f.name, r));
       } on FormatException catch (e) {
         lines.add(_ReceiveLine.error(f.name, e.message.contains('ملف') || e.message.contains('شعبة') ? e.message : 'الملف تالف.'));
@@ -159,6 +190,7 @@ class _AdminExchangePageState extends State<AdminExchangePage> {
       );
     }
     final warn = r.unmatched.isNotEmpty || r.missingStudents.isNotEmpty || !r.subjectInList;
+    const info = TextStyle(color: AppTheme.primaryDark, height: 1.5);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -177,6 +209,13 @@ class _AdminExchangePageState extends State<AdminExchangePage> {
             '${r.teacher.isEmpty ? '' : 'من ${r.teacher}، '}وصلت درجات ${r.received} طالب'
             '${r.replaced ? '، وحلّت محل النسخة السابقة' : ''}.',
           ),
+          if (r.createdSection)
+            Text('أُنشئت شعبة ${r.section.gradeName} ${r.section.name} من ملف المدرس.', style: info),
+          if (r.addedStudents.isNotEmpty)
+            Text('أُضيف ${r.addedStudents.length} طالب من ملف المدرس: ${r.addedStudents.join('، ')}', style: info),
+          if (r.addedStudents.isNotEmpty)
+            Text('بعد اكتمال الأسماء أرسل «ملف الشعبة» لباقي المدرسين حتى تتطابق القوائم.',
+                style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700, height: 1.5)),
           if (!r.subjectInList)
             Text('«${r.subject}» ليست في قائمة مواد ${r.section.gradeName}، فلن تدخل في النتيجة. أضفها من «الصفوف والشعب والمواد».',
                 style: const TextStyle(color: Color(0xFF8A5A00), height: 1.5)),

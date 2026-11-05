@@ -272,7 +272,15 @@ class ExchangeService {
   }
 
   /// استلام ملف درجات مادة في نسخة الإدارة. يحل محل درجات نفس المادة لنفس الشعبة.
-  static Future<GradesImportResult> importGradesFile(AppStore admin, Object? decoded) async {
+  /// [addMissingStudents]: الطلاب الموجودون عند المدرس وغير الموجودين في الإدارة يُضافون
+  /// إلى الشعبة بأسمائهم وأرقامهم الوطنية (فلا تحتاج الإدارة لكتابة الأسماء).
+  /// [createSection]: إذا لم توجد الشعبة في الإدارة تُنشأ من بيانات الملف.
+  static Future<GradesImportResult> importGradesFile(
+    AppStore admin,
+    Object? decoded, {
+    bool addMissingStudents = false,
+    bool createSection = false,
+  }) async {
     final info = inspectGradesFile(decoded);
     final data = decoded as Map;
     String norm(String v) => ArabicNameUtils.key(v);
@@ -284,20 +292,27 @@ class ExchangeService {
     section ??= admin.sections
         .where((s) => norm(s.gradeName) == norm(info.grade) && norm(s.name) == norm(info.sectionName))
         .firstOrNull;
+    var createdSection = false;
     if (section == null) {
-      throw FormatException('لا توجد في الإدارة شعبة «${info.grade} ${info.sectionName}». أضفها أولاً ثم أعد الاستلام.');
+      if (!createSection || info.grade.trim().isEmpty || info.sectionName.trim().isEmpty) {
+        throw FormatException('لا توجد في الإدارة شعبة «${info.grade} ${info.sectionName}». أضفها أولاً ثم أعد الاستلام.');
+      }
+      section = await admin.addSection(grade: info.grade.trim(), name: info.sectionName.trim(), subject: '');
+      createdSection = true;
     }
+    final target = section;
 
     // اسم المادة كما في قائمة مواد الصف عند الإدارة.
-    final subjects = subjectsOf(admin, section.gradeName);
+    final subjects = subjectsOf(admin, target.gradeName);
     final key = ArabicNameUtils.subjectKey(info.subject);
     final subject = subjects.where((s) => ArabicNameUtils.subjectKey(s) == key).firstOrNull ?? info.subject.trim();
     final inList = subjects.contains(subject);
 
-    final students = admin.studentsOf(section.id);
+    final students = admin.studentsOf(target.id);
     final byId = {for (final s in students) s.id: s};
     final grades = <SubjectGrade>[];
     final unmatched = <String>[];
+    final addedStudents = <String>[];
     final seen = <String>{};
 
     for (final raw in data['students'] as List) {
@@ -310,6 +325,21 @@ class ExchangeService {
         st = students.where((s) => s.nationalId.trim() == nid).firstOrNull;
       }
       st ??= students.where((s) => norm(s.name) == norm(name)).firstOrNull;
+      final cleanName = ArabicNameUtils.cleanName(name);
+      if (st == null && addMissingStudents && cleanName.isNotEmpty) {
+        final created = Student(
+          id: admin.id(),
+          schoolId: admin.school?.id ?? '',
+          number: '0',
+          name: cleanName,
+          nationalId: nid,
+          createdAt: DateTime.now().toIso8601String(),
+        );
+        await admin.addStudent(created, target.id, target.yearId);
+        students.add(created);
+        st = created;
+        addedStudents.add(cleanName);
+      }
       if (st == null || !seen.add(st.id)) {
         if (st == null) unmatched.add(name);
         continue;
@@ -324,7 +354,7 @@ class ExchangeService {
       }
       grades.add(SubjectGrade(
         id: admin.id() + st.id,
-        sectionId: section.id,
+        sectionId: target.id,
         studentId: st.id,
         subject: subject,
         values: values,
@@ -334,17 +364,19 @@ class ExchangeService {
       ));
     }
 
-    final replaced = admin.subjectGrades.any((g) => g.sectionId == section!.id && g.subject == subject);
-    admin.subjectGrades.removeWhere((g) => g.sectionId == section!.id && g.subject == subject);
+    final replaced = admin.subjectGrades.any((g) => g.sectionId == target.id && g.subject == subject);
+    admin.subjectGrades.removeWhere((g) => g.sectionId == target.id && g.subject == subject);
     admin.subjectGrades.addAll(grades);
     await admin.saveAll();
 
     final missingStudents = [
-      for (final s in students)
+      for (final s in admin.studentsOf(target.id))
         if (!seen.contains(s.id)) s.name,
     ];
     return GradesImportResult(
-      section: section,
+      section: target,
+      createdSection: createdSection,
+      addedStudents: addedStudents,
       subject: subject,
       teacher: info.teacher,
       subjectInList: inList,
@@ -408,6 +440,8 @@ class GradesFileInfo {
 class GradesImportResult {
   const GradesImportResult({
     required this.section,
+    this.createdSection = false,
+    this.addedStudents = const [],
     required this.subject,
     required this.teacher,
     required this.subjectInList,
@@ -417,6 +451,12 @@ class GradesImportResult {
     required this.missingStudents,
   });
   final Section section;
+
+  /// أُنشئت الشعبة من ملف المدرس لأنها لم تكن موجودة.
+  final bool createdSection;
+
+  /// طلاب أُضيفوا إلى الإدارة من ملف المدرس.
+  final List<String> addedStudents;
   final String subject, teacher;
   final bool subjectInList, replaced;
   final int received;

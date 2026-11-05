@@ -302,10 +302,9 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
                 }
               }
               await store.saveAll();
-              if (mounted) {
-                Navigator.pop(dialogContext);
-                setState(() {});
-              }
+              if (!mounted || !dialogContext.mounted) return;
+              Navigator.pop(dialogContext);
+              setState(() {});
             },
             child: const Text('حفظ'),
           ),

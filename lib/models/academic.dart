@@ -33,6 +33,7 @@ class Section {
     required this.gradeName,
     required this.name,
     required this.subjectName,
+    this.adminSectionId = '',
   });
 
   final String id;
@@ -41,12 +42,16 @@ class Section {
   String name;
   String subjectName;
 
+  /// معرّف الشعبة في «نسخة الإدارة» عند استيراد ملف الشعبة منها.
+  String adminSectionId;
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'yearId': yearId,
         'gradeName': gradeName,
         'name': name,
         'subjectName': subjectName,
+        if (adminSectionId.isNotEmpty) 'adminSectionId': adminSectionId,
       };
 
   factory Section.fromJson(Map<String, dynamic> j) => Section(
@@ -55,6 +60,7 @@ class Section {
         gradeName: j['gradeName'] ?? '',
         name: j['name'] ?? '',
         subjectName: j['subjectName'] ?? '',
+        adminSectionId: (j['adminSectionId'] ?? '').toString(),
       );
 }
 

@@ -8,6 +8,10 @@ class Student {
     this.photoPath = '',
     this.notes = '',
     this.createdAt = '',
+    this.adminId = '',
+    this.regNo = '',
+    this.birthDate = '',
+    this.failedYears = '',
   });
 
   final String id;
@@ -21,6 +25,14 @@ class Student {
   String notes;
   String createdAt;
 
+  /// معرّف الطالب في «نسخة الإدارة» (يربط الطالب نفسه عند كل المدرسين).
+  String adminId;
+
+  // بيانات السجل الوسطي (تُدخلها الإدارة).
+  String regNo; // رقم القيد
+  String birthDate; // المواليد
+  String failedYears; // سنوات الرسوب
+
   // معرف ثابت داخلي لا يتأثر بإعادة ترتيب الطلاب.
   String get globalKey => '$schoolId-$id';
 
@@ -33,6 +45,10 @@ class Student {
         'photoPath': photoPath,
         'notes': notes,
         'createdAt': createdAt,
+        if (adminId.isNotEmpty) 'adminId': adminId,
+        if (regNo.isNotEmpty) 'regNo': regNo,
+        if (birthDate.isNotEmpty) 'birthDate': birthDate,
+        if (failedYears.isNotEmpty) 'failedYears': failedYears,
       };
 
   factory Student.fromJson(Map<String, dynamic> j) => Student(
@@ -44,5 +60,9 @@ class Student {
         photoPath: j['photoPath'] ?? '',
         notes: j['notes'] ?? '',
         createdAt: j['createdAt'] ?? '',
+        adminId: (j['adminId'] ?? '').toString(),
+        regNo: (j['regNo'] ?? '').toString(),
+        birthDate: (j['birthDate'] ?? '').toString(),
+        failedYears: (j['failedYears'] ?? '').toString(),
       );
 }

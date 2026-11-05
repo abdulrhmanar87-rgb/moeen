@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../core/storage/app_store.dart';
 import '../../core/utils/arabic_numbers.dart';
 import 'backup_actions.dart';
+import '../../core/app.dart';
+import '../../core/app_mode.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key, required this.store});
@@ -282,6 +284,40 @@ class _SettingsPageState extends State<SettingsPage> {
     if (mounted) setState(() {});
   }
 
+  /// نوع النسخة: المدرس أو الإدارة (لكل منهما بياناتها المنفصلة).
+  Widget _editionTile(AppStore store) {
+    final current = store.isAdmin ? 'نسخة الإدارة' : 'نسخة المدرس';
+    final other = store.isAdmin ? 'نسخة المدرس' : 'نسخة الإدارة';
+    return ListTile(
+      leading: Icon(store.isAdmin ? Icons.account_balance_rounded : Icons.menu_book_rounded),
+      title: Text('نوع النسخة: $current', style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text('التبديل إلى $other. لكل نسخة بياناتها المنفصلة، ولا يُحذف شيء عند التبديل.'),
+      trailing: const Icon(Icons.swap_horiz_rounded),
+      onTap: () async {
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              title: Text('التبديل إلى $other؟'),
+              content: Text(
+                'ستفتح $other ببياناتها الخاصة. بيانات $current تبقى محفوظة كما هي، '
+                'وتعود إليها متى شئت من هنا.',
+                style: const TextStyle(height: 1.6),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+                FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('تبديل')),
+              ],
+            ),
+          ),
+        );
+        if (ok != true || !mounted) return;
+        await MoeenApp.switchMode(context, store.isAdmin ? AppMode.teacher : AppMode.admin);
+      },
+    );
+  }
+
   Widget _backupSection(AppStore store) {
     final size = store.dataSizeBytes;
     // المتصفح يسمح بحوالي 5 ميغابايت؛ ننبّه قبل الامتلاء بوقت كافٍ.
@@ -342,6 +378,9 @@ class _SettingsPageState extends State<SettingsPage> {
         body: ListView(
           padding: const EdgeInsets.all(14),
           children: [
+            _editionTile(store),
+            const Divider(),
+            if (!store.isAdmin) ...[
             ListTile(
               leading: const Icon(Icons.tune_rounded),
               title: const Text(
@@ -386,6 +425,7 @@ class _SettingsPageState extends State<SettingsPage> {
               onTap: _editGeminiKey,
             ),
             const Divider(),
+            ],
             _backupSection(store),
             const Divider(),
             ListTile(
@@ -398,7 +438,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   context: context,
                   builder: (_) => AlertDialog(
                     title: const Text('مسح البيانات؟'),
-                    content: const Text('سيحذف هذا كل بيانات مُعين الموجودة على هذا الجهاز.'),
+                    content: Text(store.isAdmin
+                        ? 'سيحذف هذا كل بيانات «نسخة الإدارة» على هذا الجهاز. بيانات نسخة المدرس لا تتأثر.'
+                        : 'سيحذف هذا كل بيانات «نسخة المدرس» على هذا الجهاز. بيانات نسخة الإدارة لا تتأثر.'),
                     actions: [
                       TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
                       FilledButton(

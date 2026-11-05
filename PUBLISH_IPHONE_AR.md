@@ -10,8 +10,10 @@
 3. في GitHub اضغط **New repository**، الاسم: `moeen`، اختر **Public**، ثم **Create repository**.
 
 ## الخطوة 2: ربط مجلد المشروع بـ GitHub (مرة واحدة)
-افتح الطرفية في VS Code داخل مجلد المشروع ونفّذ (ضع اسم حسابك بدل USERNAME):
+افتح الطرفية في VS Code داخل مجلد المشروع ونفّذ (ضع اسمك وبريد حساب GitHub، واسم حسابك بدل USERNAME):
 ```
+git config --global user.name "اسمك"
+git config --global user.email "بريدك@example.com"
 git init
 git branch -M main
 git remote add origin https://github.com/USERNAME/moeen.git
@@ -19,7 +21,7 @@ git remote add origin https://github.com/USERNAME/moeen.git
 
 ## الخطوة 3: النشر (كل مرة تريد نشر تحديث)
 ```
-publish_github_pages.bat
+.\publish_github_pages.bat
 ```
 يبني التطبيق ويضعه في مجلد `docs` ويرفعه. في أول مرة يطلب تسجيل الدخول إلى GitHub.
 

@@ -53,25 +53,60 @@ class ArabicNameUtils {
   static List<String> words(String name) =>
       cleanName(name).split(' ').where((w) => w.isNotEmpty).toList();
 
-  /// عدد أجزاء الاسم مع احتساب المركبات جزءاً واحداً:
+  /// أجزاء الاسم مع إبقاء المركبات جزءاً واحداً:
   /// عبد الله، عبد الحسين، أبو بكر، نور الدين، زين العابدين، آل حمود.
-  static int partCount(String name) {
+  static List<String> nameParts(String name) {
     final w = words(name);
-    var count = 0;
+    final parts = <String>[];
     var i = 0;
     while (i < w.length) {
       final current = w[i];
       if (_joinWithNext.contains(current) && i + 1 < w.length) {
+        parts.add('$current ${w[i + 1]}');
         i += 2;
-      } else if (_joinWithPrevious.contains(current) && count > 0) {
+      } else if (_joinWithPrevious.contains(current) && parts.isNotEmpty) {
+        parts[parts.length - 1] = '${parts.last} $current'; // يلتصق بالجزء السابق
         i += 1;
-        continue; // يلتصق بالجزء السابق
       } else {
+        parts.add(current);
         i += 1;
       }
-      count++;
     }
-    return count;
+    return parts;
+  }
+
+  static int partCount(String name) => nameParts(name).length;
+
+  /// تقسيم الاسم لأعمدة السجل الوسطي: [الطالب، الأب، الجد، أب الجد واللقب].
+  /// ما زاد عن ثلاثة أجزاء يوضع كله في العمود الرابع.
+  static List<String> recordNameColumns(String name) {
+    final p = nameParts(name);
+    return [
+      p.isNotEmpty ? p[0] : '',
+      p.length > 1 ? p[1] : '',
+      p.length > 2 ? p[2] : '',
+      p.length > 3 ? p.sublist(3).join(' ') : '',
+    ];
+  }
+
+  /// مفتاح مطابقة أسماء المواد بين المدرس والإدارة:
+  /// «الرياضيات» = «رياضيات»، «اللغة الانكليزية» = «الإنجليزية»، «التربية الإسلامية» = «الاسلامية».
+  static String subjectKey(String value) {
+    final text = normalize(value)
+        .replaceAll(RegExp('[أإآٱ]'), 'ا')
+        .replaceAll('ة', 'ه')
+        .replaceAll('ى', 'ي')
+        .replaceAll('انجليزي', 'انكليزي')
+        .replaceAll(RegExp(r'[^\u0621-\u064Aa-zA-Z\s]'), ' ');
+    const filler = {'لغه', 'ماده', 'تربيه'};
+    final words = <String>[];
+    for (var w in text.split(RegExp(r'\s+'))) {
+      if (w.isEmpty) continue;
+      if (w.startsWith('ال') && w.length > 3) w = w.substring(2);
+      if (filler.contains(w)) continue;
+      words.add(w);
+    }
+    return words.join(' ');
   }
 
   /// هل الخلية/السطر عنوان عمود (وليس اسماً)؟ مطابقة كاملة وليست جزئية،

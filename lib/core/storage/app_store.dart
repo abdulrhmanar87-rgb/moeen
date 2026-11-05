@@ -8,6 +8,15 @@ import '../utils/arabic_numbers.dart';
 import '../utils/arabic_sort.dart';
 
 class AppStore {
+  /// [namespace] يفصل بيانات «نسخة الإدارة» عن «نسخة المدرس» على نفس الجهاز.
+  /// نسخة المدرس تبقى بدون بادئة (نفس مفاتيحها القديمة) فلا تتأثر بياناتها.
+  AppStore({this.namespace = ''});
+
+  final String namespace;
+  bool get isAdmin => namespace == 'admin';
+
+  String _k(String key) => namespace.isEmpty ? key : '${namespace}__$key';
+
   static const _schoolKey = 'moeen_school';
   static const _yearsKey = 'moeen_years';
   static const _sectionsKey = 'moeen_sections';
@@ -22,6 +31,7 @@ class AppStore {
   static const _midyearKey = 'moeen_midyear';
   static const _settingsKey = 'moeen_settings';
   static const _ratingsKey = 'moeen_semester_ratings';
+  static const _subjectGradesKey = 'moeen_subject_grades';
 
   late SharedPreferences _prefs;
   School? school;
@@ -37,6 +47,9 @@ class AppStore {
   List<MonthlyExamScore> monthlyScores = [];
   List<MidyearScore> midyearScores = [];
   List<SemesterRating> semesterRatings = [];
+
+  /// نسخة الإدارة: درجات المواد المستلمة من المدرسين.
+  List<SubjectGrade> subjectGrades = [];
   Map<String, dynamic> settings = {
     // سعي الفصل من 100.
     'monthlyExamsWeight': 70,
@@ -53,21 +66,22 @@ class AppStore {
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
-    final schoolRaw = _prefs.getString(_schoolKey);
+    final schoolRaw = _prefs.getString(_k(_schoolKey));
     if (schoolRaw != null) school = School.fromJson(jsonDecode(schoolRaw));
-    years = _decode(_yearsKey, AcademicYear.fromJson);
-    sections = _decode(_sectionsKey, Section.fromJson);
-    students = _decode(_studentsKey, Student.fromJson);
-    enrollments = _decode(_enrollmentsKey, Enrollment.fromJson);
-    attendance = _decode(_attendanceKey, AttendanceRecord.fromJson);
-    behavior = _decode(_behaviorKey, BehaviorEvent.fromJson);
-    participation = _decode(_participationKey, ParticipationEvent.fromJson);
-    dailyExams = _decode(_dailyExamsKey, DailyExam.fromJson);
-    dailyScores = _decode(_dailyScoresKey, DailyExamScore.fromJson);
-    monthlyScores = _decode(_monthlyScoresKey, MonthlyExamScore.fromJson);
-    midyearScores = _decode(_midyearKey, MidyearScore.fromJson);
-    semesterRatings = _decode(_ratingsKey, SemesterRating.fromJson);
-    final rawSettings = _prefs.getString(_settingsKey);
+    years = _decode(_k(_yearsKey), AcademicYear.fromJson);
+    sections = _decode(_k(_sectionsKey), Section.fromJson);
+    students = _decode(_k(_studentsKey), Student.fromJson);
+    enrollments = _decode(_k(_enrollmentsKey), Enrollment.fromJson);
+    attendance = _decode(_k(_attendanceKey), AttendanceRecord.fromJson);
+    behavior = _decode(_k(_behaviorKey), BehaviorEvent.fromJson);
+    participation = _decode(_k(_participationKey), ParticipationEvent.fromJson);
+    dailyExams = _decode(_k(_dailyExamsKey), DailyExam.fromJson);
+    dailyScores = _decode(_k(_dailyScoresKey), DailyExamScore.fromJson);
+    monthlyScores = _decode(_k(_monthlyScoresKey), MonthlyExamScore.fromJson);
+    midyearScores = _decode(_k(_midyearKey), MidyearScore.fromJson);
+    semesterRatings = _decode(_k(_ratingsKey), SemesterRating.fromJson);
+    subjectGrades = _decode(_k(_subjectGradesKey), SubjectGrade.fromJson);
+    final rawSettings = _prefs.getString(_k(_settingsKey));
     if (rawSettings != null) settings = jsonDecode(rawSettings);
     // الأرقام أصبحت إنكليزية دائماً داخل التطبيق؛ إزالة الإعداد القديم
     // وتوحيد أي أرقام عربية محفوظة سابقاً.
@@ -92,21 +106,22 @@ class AppStore {
 
   Future<void> saveAll() async {
     if (school != null) {
-      await _prefs.setString(_schoolKey, jsonEncode(school!.toJson()));
+      await _prefs.setString(_k(_schoolKey), jsonEncode(school!.toJson()));
     }
-    await _save(_yearsKey, years);
-    await _save(_sectionsKey, sections);
-    await _save(_studentsKey, students);
-    await _save(_enrollmentsKey, enrollments);
-    await _save(_attendanceKey, attendance);
-    await _save(_behaviorKey, behavior);
-    await _save(_participationKey, participation);
-    await _save(_dailyExamsKey, dailyExams);
-    await _save(_dailyScoresKey, dailyScores);
-    await _save(_monthlyScoresKey, monthlyScores);
-    await _save(_midyearKey, midyearScores);
-    await _save(_ratingsKey, semesterRatings);
-    await _prefs.setString(_settingsKey, jsonEncode(settings));
+    await _save(_k(_yearsKey), years);
+    await _save(_k(_sectionsKey), sections);
+    await _save(_k(_studentsKey), students);
+    await _save(_k(_enrollmentsKey), enrollments);
+    await _save(_k(_attendanceKey), attendance);
+    await _save(_k(_behaviorKey), behavior);
+    await _save(_k(_participationKey), participation);
+    await _save(_k(_dailyExamsKey), dailyExams);
+    await _save(_k(_dailyScoresKey), dailyScores);
+    await _save(_k(_monthlyScoresKey), monthlyScores);
+    await _save(_k(_midyearKey), midyearScores);
+    await _save(_k(_ratingsKey), semesterRatings);
+    await _save(_k(_subjectGradesKey), subjectGrades);
+    await _prefs.setString(_k(_settingsKey), jsonEncode(settings));
   }
 
   List<Student> studentsOf(String sectionId) {
@@ -302,6 +317,7 @@ class AppStore {
     monthlyScores.removeWhere((e) => e.sectionId == sectionId);
     midyearScores.removeWhere((e) => e.sectionId == sectionId);
     semesterRatings.removeWhere((e) => e.sectionId == sectionId);
+    subjectGrades.removeWhere((e) => e.sectionId == sectionId);
 
     final stillEnrolled = enrollments.map((e) => e.studentId).toSet();
     students.removeWhere(
@@ -320,7 +336,7 @@ class AppStore {
   Future<void> setCurrentSection(String? sectionId) async {
     if (sectionId == null || settings['currentSectionId'] == sectionId) return;
     settings['currentSectionId'] = sectionId;
-    await _prefs.setString(_settingsKey, jsonEncode(settings));
+    await _prefs.setString(_k(_settingsKey), jsonEncode(settings));
   }
 
   /// تقدير السلوك والمشاركة للطالب في الفصل، أو null إذا لم يُقيَّم.
@@ -360,7 +376,7 @@ class AppStore {
 
   Future<void> markBackedUp() async {
     settings['lastBackupAt'] = DateTime.now().toIso8601String();
-    await _prefs.setString(_settingsKey, jsonEncode(settings));
+    await _prefs.setString(_k(_settingsKey), jsonEncode(settings));
   }
 
   /// كل بيانات مُعين في ملف واحد. مفتاح القراءة الذكية لا يُصدَّر حفاظاً على خصوصيته.
@@ -386,6 +402,8 @@ class AppStore {
       'monthlyScores': j(monthlyScores),
       'midyearScores': j(midyearScores),
       'semesterRatings': j(semesterRatings),
+      'subjectGrades': j(subjectGrades),
+      'edition': isAdmin ? 'admin' : 'teacher',
       'settings': cleanSettings,
     };
   }
@@ -415,10 +433,22 @@ class AppStore {
     );
   }
 
+  /// رسالة إذا كان الملف نسخة احتياطية للنسخة الأخرى (مدرس/إدارة)، وإلا null.
+  /// النسخ القديمة بلا حقل edition هي نسخ مدرس.
+  String? editionMismatch(Object? decoded) {
+    final fileIsAdmin = decoded is Map && decoded['edition'] == 'admin';
+    if (fileIsAdmin == isAdmin) return null;
+    return fileIsAdmin
+        ? 'هذا الملف نسخة احتياطية لـ«نسخة الإدارة». غيّر نوع النسخة من الإعدادات ثم استعده.'
+        : 'هذا الملف نسخة احتياطية لـ«نسخة المدرس». غيّر نوع النسخة من الإعدادات ثم استعده.';
+  }
+
   /// استبدال كل البيانات بمحتوى النسخة. يُقرأ الملف كاملاً ويُتحقق منه أولاً،
   /// فإذا كان تالفاً لا يتغير أي شيء من البيانات الحالية.
   Future<void> importData(Object? decoded) async {
     inspectBackup(decoded);
+    final mismatch = editionMismatch(decoded);
+    if (mismatch != null) throw FormatException(mismatch);
     final data = Map<String, dynamic>.from(decoded as Map);
 
     List<T> parse<T>(String key, T Function(Map<String, dynamic>) fromJson) {
@@ -443,6 +473,7 @@ class AppStore {
     final newMonthlyScores = parse('monthlyScores', MonthlyExamScore.fromJson);
     final newMidyear = parse('midyearScores', MidyearScore.fromJson);
     final newRatings = parse('semesterRatings', SemesterRating.fromJson);
+    final newSubjectGrades = parse('subjectGrades', SubjectGrade.fromJson);
     final newSettings = data['settings'] is Map
         ? Map<String, dynamic>.from(data['settings'] as Map)
         : <String, dynamic>{};
@@ -465,13 +496,22 @@ class AppStore {
     monthlyScores = newMonthlyScores;
     midyearScores = newMidyear;
     semesterRatings = newRatings;
+    subjectGrades = newSubjectGrades;
     settings = newSettings;
-    if (school == null) await _prefs.remove(_schoolKey);
+    if (school == null) await _prefs.remove(_k(_schoolKey));
     await saveAll();
   }
 
+  /// يمسح بيانات هذه النسخة فقط (المدرس أو الإدارة)، ولا يلمس النسخة الأخرى.
   Future<void> clearAllData() async {
-    await _prefs.clear();
+    for (final key in const [
+      _schoolKey, _yearsKey, _sectionsKey, _studentsKey, _enrollmentsKey,
+      _attendanceKey, _behaviorKey, _participationKey, _dailyExamsKey,
+      _dailyScoresKey, _monthlyScoresKey, _midyearKey, _settingsKey,
+      _ratingsKey, _subjectGradesKey,
+    ]) {
+      await _prefs.remove(_k(key));
+    }
     school = null;
     years.clear();
     sections.clear();
@@ -485,6 +525,7 @@ class AppStore {
     monthlyScores.clear();
     midyearScores.clear();
     semesterRatings.clear();
+    subjectGrades.clear();
   }
 }
 

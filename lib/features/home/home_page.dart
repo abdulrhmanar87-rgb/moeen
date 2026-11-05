@@ -12,6 +12,7 @@ import '../setup/setup_page.dart';
 import '../results/results_page.dart';
 import '../settings/settings_page.dart';
 import '../settings/backup_actions.dart';
+import '../exchange/teacher_exchange_page.dart';
 
 /// الواجهة الرئيسية بفكرة «دفتر المدرس»:
 /// صفحة مسطّرة بهامش أحمر للتحية والتاريخ، ثم الشعب كألسنة دفتر،
@@ -399,6 +400,8 @@ class _HomePageState extends State<HomePage> {
       (Icons.calculate_outlined, 'النتائج', 'سعي الفصل لكل طالب وتفصيل حسابه', ResultsPage(store: store)),
       (Icons.print_outlined, 'التقارير وسجل المدرس', 'متابعة الشعبة وطباعة السجل على A4', ReportsPage(store: store)),
       (Icons.class_outlined, 'الصفوف والشعب', 'الصفوف والشعب وبيانات المدرسة', SetupPage(store: store)),
+      (Icons.swap_vert_circle_outlined, 'ملفات الإدارة', 'استيراد قائمة الشعبة من الإدارة وإرسال درجات المادة إليها',
+          TeacherExchangePage(store: store)),
     ];
     return Material(
       color: Colors.white,

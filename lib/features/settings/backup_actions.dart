@@ -55,7 +55,8 @@ class BackupActions {
     final messenger = ScaffoldMessenger.of(context);
     try {
       final json = const JsonEncoder.withIndent(' ').convert(store.exportData());
-      final saved = await saveTextFile('moeen-backup_${_stamp(DateTime.now())}.json', json);
+      final prefix = store.isAdmin ? 'moeen-admin-backup' : 'moeen-backup';
+      final saved = await saveTextFile('${prefix}_${_stamp(DateTime.now())}.json', json);
       if (!saved) return;
       await store.markBackedUp();
       messenger.showSnackBar(const SnackBar(
@@ -85,9 +86,11 @@ class BackupActions {
     try {
       decoded = jsonDecode(await file.readAsString());
       summary = AppStore.inspectBackup(decoded);
+      final mismatch = store.editionMismatch(decoded);
+      if (mismatch != null) throw FormatException(mismatch);
     } on FormatException catch (e) {
       if (context.mounted) {
-        _snack(context, e.message.contains('مُعين') ? e.message : 'الملف ليس نسخة احتياطية صالحة من مُعين.');
+        _snack(context, e.message.contains('مُعين') || e.message.contains('نسخة') ? e.message : 'الملف ليس نسخة احتياطية صالحة من مُعين.');
       }
       return false;
     } catch (_) {

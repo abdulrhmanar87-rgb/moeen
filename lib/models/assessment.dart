@@ -278,3 +278,66 @@ class MidyearScore {
         status: j['status'] ?? 'مكتمل',
       );
 }
+
+/// درجات مادة واحدة لطالب، كما وصلت من مدرّس المادة (نسخة الإدارة).
+/// [values] الأعمدة الثمانية الرقمية بترتيب السجل الوسطي:
+/// معدل الفصل الأول، نصف السنة، معدل الفصل الثاني، السعي السنوي،
+/// الامتحان النهائي، الدرجة النهائية، الإكمال، الدرجة بعد الإكمال.
+class SubjectGrade {
+  SubjectGrade({
+    required this.id,
+    required this.sectionId,
+    required this.studentId,
+    required this.subject,
+    required this.values,
+    this.note = '',
+    this.teacherName = '',
+    this.receivedAt = '',
+  });
+
+  static const columns = 8;
+
+  final String id;
+  final String sectionId;
+  final String studentId;
+  final String subject;
+  final List<double?> values;
+  final String note;
+  final String teacherName;
+  final String receivedAt;
+
+  double? get finalGrade => values.length > 5 ? values[5] : null;
+  double? get afterCompletion => values.length > 7 ? values[7] : null;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'sectionId': sectionId,
+        'studentId': studentId,
+        'subject': subject,
+        'values': values,
+        'note': note,
+        'teacherName': teacherName,
+        'receivedAt': receivedAt,
+      };
+
+  factory SubjectGrade.fromJson(Map<String, dynamic> j) {
+    final raw = j['values'];
+    final values = List<double?>.filled(columns, null);
+    if (raw is List) {
+      for (var i = 0; i < columns && i < raw.length; i++) {
+        final v = raw[i];
+        values[i] = v is num ? v.toDouble() : null;
+      }
+    }
+    return SubjectGrade(
+      id: (j['id'] ?? '').toString(),
+      sectionId: (j['sectionId'] ?? '').toString(),
+      studentId: (j['studentId'] ?? '').toString(),
+      subject: (j['subject'] ?? '').toString(),
+      values: values,
+      note: (j['note'] ?? '').toString(),
+      teacherName: (j['teacherName'] ?? '').toString(),
+      receivedAt: (j['receivedAt'] ?? '').toString(),
+    );
+  }
+}

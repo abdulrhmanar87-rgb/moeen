@@ -17,7 +17,8 @@ class GradeValue {
 
 /// إدخال الدرجات بأقل عدد من الضغطات:
 /// - لوحة أرقام ثابتة أسفل الشاشة (لا تحتاج لوحة مفاتيح الهاتف ولا زر «التالي»).
-/// - الانتقال للطالب التالي تلقائياً عندما تكتمل الدرجة (مثلاً 7 من 10، أو 85 من 100).
+/// - الدرجات أعداد صحيحة، والانتقال للطالب التالي فوري عندما تكتمل الدرجة
+///   (مثلاً 7 من 10، أو 85 من 100).
 /// - كل درجة تُحفظ فوراً، فلا يوجد زر حفظ.
 /// - على الحاسوب: الأرقام و Enter والأسهم، و«غ» أو «-» للغائب.
 class GradeEntryPage extends StatefulWidget {
@@ -111,7 +112,7 @@ class _GradeEntryPageState extends State<GradeEntryPage> {
   void _commit() {
     _advance?.cancel();
     if (buffer.isEmpty || index >= students.length) return;
-    final v = double.tryParse(buffer.endsWith('.') ? buffer.substring(0, buffer.length - 1) : buffer);
+    final v = double.tryParse(buffer);
     if (v != null && v <= max) _set(index, GradeValue(score: v));
     buffer = '';
   }
@@ -144,8 +145,6 @@ class _GradeEntryPageState extends State<GradeEntryPage> {
   /// هل اكتملت الدرجة فلا يمكن إضافة رقم آخر إليها؟
   bool _complete(String b) {
     if (b.isEmpty) return false;
-    final dot = b.indexOf('.');
-    if (dot >= 0) return b.length - dot - 1 >= 1;
     if (b == '0') return true;
     final v = double.parse(b);
     return v * 10 > max;
@@ -175,25 +174,12 @@ class _GradeEntryPageState extends State<GradeEntryPage> {
     }
     setState(() => buffer = nb);
     if (_complete(nb)) {
-      // مهلة قصيرة تسمح بكتابة الفاصلة (7 ثم .5).
+      // لحظة قصيرة ليرى المدرس الرقم قبل الانتقال.
       _advance?.cancel();
-      final canDecimal = !nb.contains('.') && double.parse(nb) < max;
-      _advance = Timer(Duration(milliseconds: canDecimal ? 650 : 220), () {
+      _advance = Timer(const Duration(milliseconds: 150), () {
         if (mounted) _next();
       });
     }
-  }
-
-  void _dot() {
-    if (index >= students.length || buffer.contains('.')) return;
-    final base = buffer.isEmpty ? '0' : buffer;
-    if (double.parse(base) >= max) {
-      _error();
-      return;
-    }
-    _advance?.cancel();
-    HapticFeedback.selectionClick();
-    setState(() => buffer = '$base.');
   }
 
   void _backspace() {
@@ -251,8 +237,6 @@ class _GradeEntryPageState extends State<GradeEntryPage> {
       _digit('$ai');
     } else if (RegExp(r'^[0-9]$').hasMatch(ch)) {
       _digit(ch);
-    } else if (ch == '.' || ch == '٫' || ch == ',') {
-      _dot();
     } else if (ch == 'غ' || ch == '-' || ch == 'a' || ch == 'A') {
       _absent();
     } else {
@@ -468,8 +452,7 @@ class _GradeEntryPageState extends State<GradeEntryPage> {
                   ]),
                   Row(children: [
                     key(const Icon(Icons.keyboard_arrow_up_rounded, size: 30), index == 0 ? null : _prev),
-                    key(const Text('.'), _dot),
-                    digit('0'),
+                    key(const Text('0'), () => _digit('0'), flex: 2),
                     key(const Icon(Icons.keyboard_arrow_down_rounded, size: 30), _next, bg: p.primary, fg: Colors.white),
                   ]),
                 ]),

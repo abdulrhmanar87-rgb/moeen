@@ -100,7 +100,12 @@ class _AdminExchangePageState extends State<AdminExchangePage> {
 
   // ---------------------------------------------------------------------------
 
-  bool _setting(String key) => store.settings[key] != false;
+  /// إضافة الأسماء من ملفات المدرسين متوقفة افتراضياً: الإدارة هي من تُدخل الأسماء.
+  bool _setting(String key) {
+    final v = store.settings[key];
+    if (v is bool) return v;
+    return key != 'receiveAddStudents';
+  }
 
   Future<void> _toggle(String key, bool v) async {
     store.settings[key] = v;
@@ -121,7 +126,7 @@ class _AdminExchangePageState extends State<AdminExchangePage> {
               value: _setting('receiveAddStudents'),
               onChanged: (v) => _toggle('receiveAddStudents', v),
               title: const Text('إضافة أسماء الطلاب من ملف المدرس'),
-              subtitle: const Text('الطالب الموجود عند المدرس وغير الموجود في الإدارة يُضاف للشعبة مع درجاته، فلا تحتاج لكتابة الأسماء.'),
+              subtitle: const Text('متوقف عادةً لأن الإدارة هي من تُدخل الأسماء وتوزعها. فعّله فقط إذا أرسل مدرس طلاباً غير موجودين في قائمتك وأردت إضافتهم.'),
             ),
             const Divider(height: 1),
             SwitchListTile(

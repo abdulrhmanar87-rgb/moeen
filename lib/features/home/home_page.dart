@@ -101,6 +101,8 @@ class _HomePageState extends State<HomePage> {
                     _heading('مهام اليوم في ${section.gradeName} ${section.name}'),
                     const SizedBox(height: 10),
                     _todayActions(section),
+                    const SizedBox(height: 10),
+                    _adminLink(),
                   ],
                   const SizedBox(height: 26),
                   _heading('كل الأقسام'),
@@ -333,10 +335,14 @@ class _HomePageState extends State<HomePage> {
             const Icon(Icons.bookmark_add_outlined, size: 34, color: AppTheme.primary),
             const SizedBox(width: 14),
             const Expanded(
-              child: Text('لا توجد شعب بعد. أضف الصف والشعبة والمادة لتبدأ بإضافة الطلاب.', style: TextStyle(height: 1.5)),
+              child: Text('لا توجد شعب بعد. استورد ملف الشعبة الذي أرسلته الإدارة، فتُضاف الشعبة وأسماء طلابها، '
+                  'أو أضف شعبة يدوياً.', style: TextStyle(height: 1.5)),
             ),
             const SizedBox(width: 10),
-            FilledButton(onPressed: () => open(SetupPage(store: store)), child: const Text('إضافة شعبة')),
+            Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              FilledButton(onPressed: () => open(TeacherExchangePage(store: store)), child: const Text('ملف الإدارة')),
+              TextButton(onPressed: () => open(SetupPage(store: store)), child: const Text('إضافة يدوية')),
+            ]),
           ]),
         ),
       );
@@ -365,6 +371,15 @@ class _HomePageState extends State<HomePage> {
       ),
     ]);
   }
+
+  /// دور المدرس مع الإدارة: يستلم الأسماء ويرسل الدرجات.
+  Widget _adminLink() => _bigAction(
+        icon: Icons.swap_vert_circle_outlined,
+        title: 'ملفات الإدارة',
+        subtitle: 'استلام قائمة الطلاب من الإدارة، وإرسال الدرجات إليها',
+        filled: false,
+        onTap: () => open(TeacherExchangePage(store: store)),
+      );
 
   Widget _bigAction({
     required IconData icon,
@@ -404,7 +419,9 @@ class _HomePageState extends State<HomePage> {
   /// فهرس الدفتر: قائمة واحدة بفواصل بدل شبكة بطاقات متشابهة.
   Widget _index(Section? section) {
     final items = <(IconData, String, String, Widget)>[
-      (Icons.groups_rounded, 'الطلاب', 'إضافة الطلاب وتعديلهم ونقلهم بين الشعب',
+      (Icons.swap_vert_circle_outlined, 'ملفات الإدارة', 'استلام قائمة الطلاب من الإدارة وإرسال الدرجات إليها',
+          TeacherExchangePage(store: store)),
+      (Icons.groups_rounded, 'الطلاب', 'قائمة الشعبة، وإضافة يدوية إذا لم يصل ملف الإدارة',
           StudentsPage(store: store, initialSectionId: section?.id)),
       (Icons.fact_check_outlined, 'الحضور والغياب', 'سجل الحضور اليومي لكل شعبة',
           AttendancePage(store: store, initialSectionId: section?.id)),
@@ -413,8 +430,6 @@ class _HomePageState extends State<HomePage> {
       (Icons.calculate_outlined, 'النتائج', 'سعي الفصل لكل طالب وتفصيل حسابه', ResultsPage(store: store)),
       (Icons.print_outlined, 'التقارير وسجل المدرس', 'متابعة الشعبة وطباعة السجل على A4', ReportsPage(store: store)),
       (Icons.class_outlined, 'الصفوف والشعب', 'الصفوف والشعب وبيانات المدرسة', SetupPage(store: store)),
-      (Icons.swap_vert_circle_outlined, 'ملفات الإدارة', 'استيراد قائمة الشعبة من الإدارة وإرسال درجات المادة إليها',
-          TeacherExchangePage(store: store)),
     ];
     return Material(
       color: Colors.white,

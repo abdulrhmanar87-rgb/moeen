@@ -115,6 +115,7 @@ class AdminColors {
   static const soft = Color(0xFFE3EBF6);
   static const selected = Color(0xFFEDF2FA);
   static const border = Color(0xFFD9E2EF);
+  static const surface = Color(0xFFF3F6FA);
   static const gold = Color(0xFFC9A043);
   static const goldSoft = Color(0xFFF7EFD9);
 }

@@ -222,22 +222,24 @@ class _HomePageState extends State<HomePage> {
     }
     final calc = CalculationService(store);
     final semester = Semesters.current();
-    return SizedBox(
-      height: 142,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: store.sections.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (_, i) {
-          final s = store.sections[i];
-          final color = _tabColors[i % _tabColors.length];
-          final students = store.studentsOf(s.id);
-          final complete = students.where((st) => calc.semester(st.id, s.id, semester).isComplete).length;
-          final isSelected = selected?.id == s.id;
-          return _sectionTab(s, color, students.length, complete, isSelected);
-        },
-      ),
-    );
+    // شبكة بدل التمرير الأفقي: كل الشعب ظاهرة دون سحب.
+    return LayoutBuilder(builder: (context, c) {
+      final cols = (c.maxWidth / 180).floor().clamp(2, 4);
+      final w = (c.maxWidth - (cols - 1) * 10) / cols;
+      return Wrap(spacing: 10, runSpacing: 10, children: [
+        for (var i = 0; i < store.sections.length; i++)
+          Builder(builder: (_) {
+            final s = store.sections[i];
+            final students = store.studentsOf(s.id);
+            final complete = students.where((st) => calc.semester(st.id, s.id, semester).isComplete).length;
+            return SizedBox(
+              width: w,
+              height: 142,
+              child: _sectionTab(s, _tabColors[i % _tabColors.length], students.length, complete, selected?.id == s.id),
+            );
+          }),
+      ]);
+    });
   }
 
   Widget _sectionTab(Section s, Color color, int count, int complete, bool selected) {

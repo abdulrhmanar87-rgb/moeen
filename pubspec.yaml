@@ -1,7 +1,7 @@
 name: moeen
 description: "مُعين — مساعد الأستاذ"
 publish_to: "none"
-version: 3.2.0+19
+version: 3.3.0+20
 
 environment:
   sdk: ">=3.3.0 <4.0.0"

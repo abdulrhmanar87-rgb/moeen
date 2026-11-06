@@ -3,6 +3,7 @@ import '../../core/storage/app_store.dart';
 import '../../core/utils/arabic_numbers.dart';
 import '../../models/student.dart';
 import 'student_import_page.dart';
+import 'student_profile_page.dart';
 
 class StudentsPage extends StatefulWidget {
   const StudentsPage({super.key, required this.store, this.initialSectionId});
@@ -396,6 +397,18 @@ class _StudentsPageState extends State<StudentsPage> {
             .where((s) => s.id == enrollment.sectionId)
             .firstOrNull;
 
+    if (!store.isAdmin && section != null) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StudentProfilePage(store: store, student: student, sectionId: section.id),
+        ),
+      );
+      if (mounted) setState(() {});
+      return;
+    }
+    if (!mounted) return;
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -452,24 +465,6 @@ class _StudentsPageState extends State<StudentsPage> {
                     _infoRow('الرقم الوطني', student.nationalId),
                   if (student.notes.isNotEmpty)
                     _infoRow('ملاحظات', student.notes),
-                  const Divider(height: 28),
-                  const Text(
-                    'سيظهر السجل الدراسي هنا تدريجياً:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: const [
-                      Chip(label: Text('الحضور')),
-                      Chip(label: Text('السلوك')),
-                      Chip(label: Text('المشاركة')),
-                      Chip(label: Text('الامتحانات اليومية')),
-                      Chip(label: Text('الدرجات الشهرية')),
-                      Chip(label: Text('النتائج')),
-                    ],
-                  ),
                 ],
               ),
             ),

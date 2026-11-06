@@ -230,6 +230,43 @@ class AppStore {
     await saveAll();
   }
 
+  /// حالة الطالب في يوم، أو null إذا لم يُسجَّل حضور ذلك اليوم.
+  String? attendanceOf(String sectionId, String date, String studentId) {
+    for (final a in attendance) {
+      if (a.sectionId == sectionId && a.date == date && a.studentId == studentId) return a.status;
+    }
+    return null;
+  }
+
+  /// هل سُجّل حضور هذه الشعبة في هذا اليوم؟
+  bool attendanceTaken(String sectionId, String date) =>
+      attendance.any((a) => a.sectionId == sectionId && a.date == date);
+
+  /// تسجيل حضور يوم كامل بحفظ واحد: من لم تُحدد حالته يُسجَّل «حاضر».
+  Future<void> saveAttendanceDay({
+    required String sectionId,
+    required String date,
+    required List<String> studentIds,
+    required Map<String, String> statuses,
+  }) async {
+    for (final sid in studentIds) {
+      final status = statuses[sid] ?? 'حاضر';
+      final i = attendance.indexWhere((a) => a.sectionId == sectionId && a.date == date && a.studentId == sid);
+      if (i >= 0) {
+        attendance[i].status = status;
+      } else {
+        attendance.add(AttendanceRecord(id: '${id()}_a${attendance.length}', studentId: sid, sectionId: sectionId, date: date, status: status));
+      }
+    }
+    await saveAll();
+  }
+
+  /// حذف تسجيل حضور يوم كامل لشعبة.
+  Future<void> clearAttendanceDay(String sectionId, String date) async {
+    attendance.removeWhere((a) => a.sectionId == sectionId && a.date == date);
+    await saveAll();
+  }
+
   Future<void> setBehavior(String sectionId, String studentId, int rating) async {
     behavior.add(BehaviorEvent(
       id: id(),

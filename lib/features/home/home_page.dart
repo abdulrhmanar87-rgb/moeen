@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
+import '../../core/app_version.dart';
 import '../../core/constants/semesters.dart';
 import '../../core/storage/app_store.dart';
 import '../../models/academic.dart';
@@ -111,7 +112,7 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(width: 8),
         Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Text('مساعد الأستاذ', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+          child: Text('مساعد الأستاذ · $appVersion', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
         ),
         const Spacer(),
         IconButton(

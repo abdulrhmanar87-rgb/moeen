@@ -1,7 +1,7 @@
 // عامل خدمة مُعين: يجعل التطبيق يفتح بدون إنترنت بعد أول فتح.
 // - ملفات التطبيق: من الشبكة أولاً (لتصل التحديثات فوراً)، ومن المخزن عند انقطاع الإنترنت.
 // - مكتبة قراءة الصور وملفات اللغة: من المخزن أولاً (لا تتغير).
-const APP_CACHE = 'moeen-app-v1';
+const APP_CACHE = 'moeen-app-v2';
 const CDN_CACHE = 'moeen-cdn-v1';
 // محرك عرض Flutter وخطوطه الاحتياطية من gstatic، ومكتبة قراءة الصور وملفات لغتها.
 const CDN_HOSTS = ['www.gstatic.com', 'fonts.gstatic.com', 'unpkg.com', 'cdn.jsdelivr.net', 'tessdata.projectnaptha.com'];
@@ -44,7 +44,8 @@ self.addEventListener('fetch', (event) => {
   event.respondWith((async () => {
     const cache = await caches.open(APP_CACHE);
     try {
-      const res = await fetch(req);
+      // no-cache: يتحقق من الخادم في كل مرة فيصل التحديث فور نشره.
+      const res = await fetch(req, { cache: 'no-cache' });
       if (res.ok) cache.put(req, res.clone());
       return res;
     } catch (e) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
+import '../../core/app_version.dart';
 import '../../core/storage/app_store.dart';
 import '../../models/academic.dart';
 import '../../services/admin_results_service.dart';
@@ -57,7 +58,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     const SizedBox(width: 8),
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text('نسخة الإدارة', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+                      child: Text('نسخة الإدارة · $appVersion', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
                     ),
                     const Spacer(),
                     IconButton(

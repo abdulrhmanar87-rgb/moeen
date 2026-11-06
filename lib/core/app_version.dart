@@ -1,3 +1,3 @@
 /// رقم الإصدار الظاهر في التطبيق (يطابق version في pubspec.yaml).
 /// يفيد للتأكد من وصول التحديث بعد النشر.
-const appVersion = '3.3.2';
+const appVersion = '3.4.0';

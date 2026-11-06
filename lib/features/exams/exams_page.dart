@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../../core/constants/semesters.dart';
 import '../../core/sound/tick_sound.dart';
 import '../../core/storage/app_store.dart';
-import '../../core/utils/arabic_numbers.dart';
 import '../../models/assessment.dart';
 import '../../services/calculation_service.dart';
+import 'grade_entry_page.dart';
 
 class ExamsPage extends StatefulWidget {
   const ExamsPage({super.key, required this.store, this.initialSectionId});
@@ -129,6 +129,7 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
                   itemCount: exams.length,
                   itemBuilder: (_, i) => Card(
                     child: ListTile(
+                      onTap: () => _enterDaily(exams[i]),
                       title: Text(exams[i].title),
                       subtitle: Text('${exams[i].date} • ${_enteredCount(exams[i].id)} درجة مدخلة'),
                       trailing: FilledButton(
@@ -144,181 +145,96 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
   }
 
   Future<void> _newDailyExam() async {
-    final title = TextEditingController();
     final store = widget.store;
-    await showDialog(
+    final n = store.dailyExams.where((e) => e.sectionId == sectionId && e.semester == semester).length + 1;
+    final title = TextEditingController(text: 'يومي $n');
+    title.selection = TextSelection(baseOffset: 0, extentOffset: title.text.length);
+    Future<void> create(BuildContext dialogContext) async {
+      final t = title.text.trim().isEmpty ? 'يومي $n' : title.text.trim();
+      final exam = DailyExam(
+        id: store.id(),
+        sectionId: sectionId!,
+        date: DateTime.now().toIso8601String().substring(0, 10),
+        title: t,
+        semester: semester,
+      );
+      store.dailyExams.add(exam);
+      await store.saveAll();
+      if (dialogContext.mounted) Navigator.pop(dialogContext, exam);
+    }
+
+    final exam = await showDialog<DailyExam>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text('امتحان يومي جديد — ${Semesters.name(semester)}'),
-        content: TextField(controller: title, decoration: const InputDecoration(labelText: 'اسم الامتحان')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
-          FilledButton(
-            onPressed: () async {
-              if (title.text.trim().isEmpty) return;
-              store.dailyExams.add(DailyExam(
-                id: store.id(),
-                sectionId: sectionId!,
-                date: DateTime.now().toIso8601String().substring(0, 10),
-                title: title.text.trim(),
-                semester: semester,
-              ));
-              await store.saveAll();
-              if (mounted) {
-                Navigator.pop(context);
-                setState(() {});
-              }
-            },
-            child: const Text('إنشاء'),
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('امتحان يومي جديد، ${Semesters.name(semester)}'),
+          content: TextField(
+            controller: title,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'اسم الامتحان'),
+            onSubmitted: (_) => create(dialogContext),
           ),
-        ],
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
+            FilledButton(onPressed: () => create(dialogContext), child: const Text('إنشاء وإدخال الدرجات')),
+          ],
+        ),
       ),
     );
+    if (!mounted) return;
+    setState(() {});
+    if (exam != null) await _enterDaily(exam);
   }
 
   Future<void> _enterDaily(DailyExam exam) async {
     final store = widget.store;
     final students = store.studentsOf(exam.sectionId);
-    final controllers = <String, TextEditingController>{};
-    final focusNodes = <String, FocusNode>{};
-    for (final s in students) {
-      final old = store.dailyScores
-          .where((x) => x.examId == exam.id && x.studentId == s.id)
-          .toList();
-      controllers[s.id] = TextEditingController(
-        text: old.isEmpty || old.first.score == null
-            ? ''
-            : old.first.score!.toString(),
-      );
-      focusNodes[s.id] = FocusNode();
-    }
-
-    bool invalidGradeExists() {
-      for (final s in students) {
-        final text = controllers[s.id]!.text.trim();
-        if (text.isEmpty) continue;
-        final value = ArabicNumbers.parseDouble(text);
-        final maxInput = _dailyExamInputMax;
-        if (value == null || value < 0 || value > maxInput) return true;
+    final initial = <String, GradeValue>{};
+    for (final x in store.dailyScores) {
+      if (x.examId != exam.id) continue;
+      if (x.status == 'درجة' && x.score != null) {
+        initial[x.studentId] = GradeValue(score: x.score);
+      } else if (x.status == 'غائب') {
+        initial[x.studentId] = const GradeValue(absent: true);
       }
-      return false;
     }
-
-    await showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('درجات: ${exam.title}'),
-        content: SizedBox(
-          width: 520,
-          child: ListView(
-            shrinkWrap: true,
-            children: students.asMap().entries.map((entry) {
-              final i = entry.key;
-              final s = entry.value;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    Expanded(child: Text(s.name)),
-                    const SizedBox(width: 10),
-                    SizedBox(
-                      width: 120,
-                      child: TextField(
-                        controller: controllers[s.id],
-                        focusNode: focusNodes[s.id],
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: const [EnglishDigitsFormatter()],
-                        textInputAction: i == students.length - 1
-                            ? TextInputAction.done
-                            : TextInputAction.next,
-                        onSubmitted: (_) {
-                          final text = controllers[s.id]!.text.trim();
-                          final value = ArabicNumbers.parseDouble(text);
-                          if (text.isNotEmpty &&
-                              (value == null || value < 0 || value > _dailyExamInputMax)) {
-                            ScaffoldMessenger.of(dialogContext).showSnackBar(
-                              SnackBar(
-                                content: Text('الدرجة يجب أن تكون بين 0 و ${_maxText(_dailyExamInputMax)}.'),
-                              ),
-                            );
-                            focusNodes[s.id]!.requestFocus();
-                            return;
-                          }
-                          if (i < students.length - 1) {
-                            FocusScope.of(dialogContext).requestFocus(
-                              focusNodes[students[i + 1].id],
-                            );
-                          } else {
-                            FocusScope.of(dialogContext).unfocus();
-                          }
-                        },
-                        decoration: InputDecoration(
-                          labelText: '0-${_maxText(_dailyExamInputMax)}',
-                          hintText: 'مثال: ${(_dailyExamInputMax / 2).toStringAsFixed(1)}',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GradeEntryPage(
+          title: exam.title,
+          subtitle: 'امتحان يومي',
+          max: _dailyExamInputMax,
+          students: students,
+          initial: initial,
+          onSave: (values) async {
+            for (final s in students) {
+              final v = values[s.id] ?? const GradeValue.empty();
+              final idx = store.dailyScores.indexWhere((x) => x.examId == exam.id && x.studentId == s.id);
+              if (v.isEmpty) {
+                if (idx >= 0) store.dailyScores.removeAt(idx);
+                continue;
+              }
+              final row = DailyExamScore(
+                id: idx >= 0 ? store.dailyScores[idx].id : '${store.id()}_${s.id}',
+                examId: exam.id,
+                studentId: s.id,
+                score: v.absent ? null : v.score,
+                status: v.absent ? 'غائب' : 'درجة',
               );
-            }).toList(),
-          ),
+              if (idx >= 0) {
+                store.dailyScores[idx] = row;
+              } else {
+                store.dailyScores.add(row);
+              }
+            }
+            await store.saveAll();
+          },
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (invalidGradeExists()) {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  SnackBar(
-                    content: Text('يوجد طالب بدرجة غير صحيحة. أدخل درجة بين 0 و ${_maxText(_dailyExamInputMax)} فقط.'),
-                  ),
-                );
-                return;
-              }
-
-              for (final s in students) {
-                final text = controllers[s.id]!.text.trim();
-                final value = ArabicNumbers.parseDouble(text);
-                final idx = store.dailyScores.indexWhere(
-                  (x) => x.examId == exam.id && x.studentId == s.id,
-                );
-                final row = DailyExamScore(
-                  id: idx >= 0 ? store.dailyScores[idx].id : store.id(),
-                  examId: exam.id,
-                  studentId: s.id,
-                  score: value,
-                  status: value == null ? 'لم يدخل' : 'درجة',
-                );
-                if (idx >= 0) {
-                  store.dailyScores[idx] = row;
-                } else {
-                  store.dailyScores.add(row);
-                }
-              }
-              await store.saveAll();
-              if (!mounted || !dialogContext.mounted) return;
-              Navigator.pop(dialogContext);
-              setState(() {});
-            },
-            child: const Text('حفظ'),
-          ),
-        ],
       ),
     );
-
-    // Dispose resources if the dialog was closed using Cancel or otherwise.
-    for (final controller in controllers.values) {
-      controller.dispose();
-    }
-    for (final node in focusNodes.values) {
-      if (!node.hasFocus) node.dispose();
-    }
+    if (mounted) setState(() {});
   }
 
   int _enteredCount(String examId) => widget.store.dailyScores
@@ -343,6 +259,7 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
         for (final period in periods)
           Card(
             child: ListTile(
+              onTap: sectionId == null ? null : () => _enterMonthly(period),
               title: Text(period),
               subtitle: Text('${entered(period)} من ${students.length} طالب'),
               trailing: FilledButton(
@@ -593,125 +510,92 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
 
   Future<void> _enterMonthly(String period, {bool midyear = false, Set<String>? onlyStudentIds}) async {
     final store = widget.store;
+    final sid = sectionId!;
     final students = store
-        .studentsOf(sectionId!)
+        .studentsOf(sid)
         .where((s) => onlyStudentIds == null || onlyStudentIds.contains(s.id))
         .toList();
-    final controllers = <String, TextEditingController>{};
-    final focusNodes = <String, FocusNode>{};
-    String fmt(double v) => v % 1 == 0 ? v.toInt().toString() : v.toString();
-    for (final s in students) {
-      double? old;
-      if (midyear) {
-        for (final x in store.midyearScores) {
-          if (x.sectionId == sectionId && x.studentId == s.id) old = x.score;
-        }
-      } else {
-        for (final x in store.monthlyScores) {
-          if (x.sectionId == sectionId && x.studentId == s.id && x.period == period) old = x.score;
-        }
+    final initial = <String, GradeValue>{};
+    void read(String studentId, double? score, String status) {
+      if (score != null) {
+        initial[studentId] = GradeValue(score: score);
+      } else if (status == 'مؤجل') {
+        initial[studentId] = const GradeValue(absent: true);
       }
-      controllers[s.id] = TextEditingController(text: old == null ? '' : fmt(old));
-      focusNodes[s.id] = FocusNode();
     }
 
-    await showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(period),
-        content: SizedBox(
-          width: 520,
-          child: ListView(
-            shrinkWrap: true,
-            children: students.asMap().entries.map((entry) {
-              final i = entry.key;
-              final s = entry.value;
-              return Row(
-              children: [
-                Expanded(child: Text(s.name)),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 120,
-                  child: TextField(
-                    controller: controllers[s.id],
-                    focusNode: focusNodes[s.id],
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: const [EnglishDigitsFormatter()],
-                    textInputAction: i == students.length - 1 ? TextInputAction.done : TextInputAction.next,
-                    onSubmitted: (_) {
-                      if (i < students.length - 1) {
-                        FocusScope.of(context).requestFocus(focusNodes[students[i + 1].id]);
-                      } else {
-                        FocusScope.of(context).unfocus();
-                      }
-                    },
-                    decoration: const InputDecoration(labelText: '0-100'),
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  onSelected: (v) => controllers[s.id]!.text = v == 'صفر' ? '0' : '',
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'مؤجل', child: Text('مؤجل')),
-                    PopupMenuItem(value: 'صفر', child: Text('صفر')),
-                  ],
-                ),
-              ],
-              );
-            }).toList(),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
-          FilledButton(
-            onPressed: () async {
-              for (final s in students) {
-                final text = controllers[s.id]!.text.trim();
-                final value = ArabicNumbers.parseDouble(text);
-                if (midyear) {
-                  final mi = store.midyearScores.indexWhere((x) => x.sectionId == sectionId && x.studentId == s.id);
-                  final row = MidyearScore(
-                    id: mi >= 0 ? store.midyearScores[mi].id : store.id(),
-                    sectionId: sectionId!,
-                    studentId: s.id,
-                    score: value?.clamp(0, 100).toDouble(),
-                    status: value == null ? 'مؤجل' : 'مكتمل',
-                  );
-                  if (mi >= 0) {
-                    store.midyearScores[mi] = row;
-                  } else {
-                    store.midyearScores.add(row);
-                  }
+    if (midyear) {
+      for (final x in store.midyearScores) {
+        if (x.sectionId == sid) read(x.studentId, x.score, x.status);
+      }
+    } else {
+      for (final x in store.monthlyScores) {
+        if (x.sectionId == sid && x.period == period) read(x.studentId, x.score, x.status);
+      }
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GradeEntryPage(
+          title: period,
+          subtitle: midyear || period == Semesters.finalExam || period == Semesters.completionExam
+              ? ''
+              : Semesters.name(semester),
+          max: 100,
+          absentLabel: 'مؤجل',
+          students: students,
+          initial: initial,
+          onSave: (values) async {
+            for (final s in students) {
+              final v = values[s.id] ?? const GradeValue.empty();
+              final score = v.absent ? null : v.score?.clamp(0, 100).toDouble();
+              final status = v.absent ? 'مؤجل' : 'مكتمل';
+              if (midyear) {
+                final mi = store.midyearScores.indexWhere((x) => x.sectionId == sid && x.studentId == s.id);
+                if (v.isEmpty) {
+                  if (mi >= 0) store.midyearScores.removeAt(mi);
                   continue;
                 }
-                final idx = store.monthlyScores.indexWhere((x) =>
-                    x.sectionId == sectionId && x.studentId == s.id && x.period == period);
-                final row = MonthlyExamScore(
-                  id: idx >= 0 ? store.monthlyScores[idx].id : store.id(),
-                  sectionId: sectionId!,
+                final row = MidyearScore(
+                  id: mi >= 0 ? store.midyearScores[mi].id : '${store.id()}_${s.id}',
+                  sectionId: sid,
                   studentId: s.id,
-                  period: period,
-                  score: value?.clamp(0, 100).toDouble(),
-                  status: value?.toString() == null ? 'مؤجل' : 'مكتمل',
+                  score: score,
+                  status: status,
                 );
-                if (idx >= 0) {
-                  store.monthlyScores[idx] = row;
+                if (mi >= 0) {
+                  store.midyearScores[mi] = row;
                 } else {
-                  store.monthlyScores.add(row);
+                  store.midyearScores.add(row);
                 }
+                continue;
               }
-              await store.saveAll();
-              if (mounted) {
-                Navigator.pop(context);
-                setState(() {});
+              final idx = store.monthlyScores
+                  .indexWhere((x) => x.sectionId == sid && x.studentId == s.id && x.period == period);
+              if (v.isEmpty) {
+                if (idx >= 0) store.monthlyScores.removeAt(idx);
+                continue;
               }
-            },
-            child: const Text('حفظ'),
-          ),
-        ],
+              final row = MonthlyExamScore(
+                id: idx >= 0 ? store.monthlyScores[idx].id : '${store.id()}_${s.id}',
+                sectionId: sid,
+                studentId: s.id,
+                period: period,
+                score: score,
+                status: status,
+              );
+              if (idx >= 0) {
+                store.monthlyScores[idx] = row;
+              } else {
+                store.monthlyScores.add(row);
+              }
+            }
+            await store.saveAll();
+          },
+        ),
       ),
     );
-    for (final node in focusNodes.values) {
-      node.dispose();
-    }
+    if (mounted) setState(() {});
   }
 }

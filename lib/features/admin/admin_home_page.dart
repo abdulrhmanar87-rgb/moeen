@@ -22,7 +22,7 @@ class AdminHomePage extends StatefulWidget {
 }
 
 class _AdminHomePageState extends State<AdminHomePage> {
-  static const _ink = AppTheme.primaryDark;
+  static const _ink = AdminColors.ink;
   AppStore get store => widget.store;
 
   Section? get _section {
@@ -104,10 +104,31 @@ class _AdminHomePageState extends State<AdminHomePage> {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       decoration: BoxDecoration(
-        color: _ink,
+        gradient: const LinearGradient(
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
+          colors: [_ink, AdminColors.primary],
+        ),
         borderRadius: BorderRadius.circular(18),
+        border: const Border(bottom: BorderSide(color: AdminColors.gold, width: 4)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AdminColors.gold.withValues(alpha: .22),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AdminColors.gold.withValues(alpha: .7)),
+            ),
+            child: const Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.account_balance_rounded, size: 15, color: Color(0xFFF3DB9C)),
+              SizedBox(width: 6),
+              Text('الإدارة', style: TextStyle(color: Color(0xFFF3DB9C), fontSize: 12.5, fontWeight: FontWeight.w800)),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: 10),
         Text(school.isEmpty ? 'اسم المدرسة لم يُكتب بعد' : school,
             style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
         const SizedBox(height: 6),
@@ -174,10 +195,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
           return SizedBox(
             width: 170,
             child: Material(
-              color: isSelected ? const Color(0xFFF1EEFB) : Colors.white,
+              color: isSelected ? AdminColors.selected : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: isSelected ? _ink : const Color(0xFFE6E2F2), width: isSelected ? 2 : 1),
+                side: BorderSide(color: isSelected ? _ink : AdminColors.border, width: isSelected ? 2 : 1),
               ),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
@@ -235,7 +256,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
       color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFE6E2F2)),
+        side: const BorderSide(color: AdminColors.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(children: [
@@ -244,7 +265,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             leading: CircleAvatar(
               radius: 16,
-              backgroundColor: AppTheme.softPurple,
+              backgroundColor: AdminColors.soft,
               child: Text('${i + 1}', style: const TextStyle(color: _ink, fontWeight: FontWeight.w900)),
             ),
             title: Text(items[i].$2, style: const TextStyle(fontWeight: FontWeight.w800)),

@@ -288,8 +288,8 @@ class _StudentImportPageState extends State<StudentImportPage> {
           Container(
             width: 64,
             height: 64,
-            decoration: const BoxDecoration(color: AppTheme.softPurple, shape: BoxShape.circle),
-            child: Icon(icon, color: AppTheme.primaryDark, size: 30),
+            decoration: BoxDecoration(color: context.palette.soft, shape: BoxShape.circle),
+            child: Icon(icon, color: context.palette.ink, size: 30),
           ),
           const SizedBox(height: 14),
           Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
@@ -391,7 +391,7 @@ class _StudentImportPageState extends State<StudentImportPage> {
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          _pill(Icons.people_alt_rounded, '${_items.length} اسم', AppTheme.softPurple, AppTheme.primaryDark),
+          _pill(Icons.people_alt_rounded, '${_items.length} اسم', context.palette.soft, context.palette.ink),
           if (review > 0) _pill(Icons.warning_amber_rounded, '$review تحتاج مراجعة', _amberBg, _amber),
           if (existing > 0) _pill(Icons.content_copy_rounded, '$existing موجود مسبقاً', const Color(0xFFFFE9E9), _red),
           if (review > 0 || existing > 0)
@@ -501,7 +501,7 @@ class _StudentImportPageState extends State<StudentImportPage> {
         padding: const EdgeInsets.fromLTRB(12, 6, 6, 12),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            const Icon(Icons.image_outlined, size: 20, color: AppTheme.primaryDark),
+            Icon(Icons.image_outlined, size: 20, color: context.palette.ink),
             const SizedBox(width: 6),
             const Expanded(child: Text('الصورة', style: TextStyle(fontWeight: FontWeight.w800))),
             IconButton(
@@ -534,7 +534,7 @@ class _StudentImportPageState extends State<StudentImportPage> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: ColoredBox(
-                  color: const Color(0xFFF2F0F7),
+                  color: context.palette.imageBackdrop,
                   child: InteractiveViewer(
                     maxScale: 5,
                     child: Center(

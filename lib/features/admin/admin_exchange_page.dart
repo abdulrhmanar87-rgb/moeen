@@ -190,7 +190,7 @@ class _AdminExchangePageState extends State<AdminExchangePage> {
       );
     }
     final warn = r.unmatched.isNotEmpty || r.missingStudents.isNotEmpty || !r.subjectInList;
-    const info = TextStyle(color: AppTheme.primaryDark, height: 1.5);
+    const info = TextStyle(color: AdminColors.ink, height: 1.5);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),

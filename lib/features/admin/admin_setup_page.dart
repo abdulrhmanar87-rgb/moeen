@@ -128,7 +128,7 @@ class _AdminSetupPageState extends State<AdminSetupPage> {
         padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            const Icon(Icons.school_rounded, color: AppTheme.primaryDark, size: 20),
+            const Icon(Icons.school_rounded, color: AdminColors.ink, size: 20),
             const SizedBox(width: 8),
             Expanded(child: Text(grade, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900))),
             TextButton.icon(
@@ -288,7 +288,7 @@ class _AdminSetupPageState extends State<AdminSetupPage> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.add_circle_rounded, color: AppTheme.primary),
+                    icon: const Icon(Icons.add_circle_rounded, color: AdminColors.primary),
                     onPressed: () => setDialogState(() {
                       final v = addC.text.trim();
                       if (v.isNotEmpty && !list.contains(v)) list.add(v);

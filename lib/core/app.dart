@@ -62,8 +62,8 @@ class _MoeenAppState extends State<MoeenApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'مُعين — مساعد الأستاذ',
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
+      theme: store?.isAdmin == true ? AppTheme.adminLight : AppTheme.light,
+      darkTheme: store?.isAdmin == true ? AppTheme.adminDark : AppTheme.dark,
       themeMode: ThemeMode.system,
       home: home,
     );

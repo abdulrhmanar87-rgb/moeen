@@ -39,6 +39,7 @@ class ModeChoicePage extends StatelessWidget {
                     title: 'نسخة الإدارة',
                     body: 'للمدير أو المعاون: إعداد الشعب ومواد كل صف، إرسال قوائم الطلاب للمدرسين، '
                         'استلام درجات كل المواد، والنتائج والسجل الوسطي.',
+                    palette: MoeenPalette.admin,
                     onTap: () => onChoose(AppMode.admin),
                   ),
                   const SizedBox(height: 18),
@@ -58,12 +59,13 @@ class ModeChoicePage extends StatelessWidget {
     required String title,
     required String body,
     required VoidCallback onTap,
+    MoeenPalette palette = MoeenPalette.teacher,
   }) {
     return Material(
       color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: Color(0xFFE0DAF3)),
+        side: BorderSide(color: palette.outline),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -74,13 +76,13 @@ class ModeChoicePage extends StatelessWidget {
             Container(
               width: 56,
               height: 56,
-              decoration: const BoxDecoration(color: AppTheme.softPurple, shape: BoxShape.circle),
-              child: Icon(icon, color: AppTheme.primaryDark, size: 28),
+              decoration: BoxDecoration(color: palette.soft, shape: BoxShape.circle),
+              child: Icon(icon, color: palette.ink, size: 28),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppTheme.primaryDark)),
+                Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: palette.ink)),
                 const SizedBox(height: 4),
                 Text(body, style: TextStyle(color: Colors.grey.shade700, height: 1.5)),
               ]),

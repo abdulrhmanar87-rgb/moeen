@@ -104,11 +104,11 @@ class _AdminResultsPageState extends State<AdminResultsPage> {
                   const SizedBox(height: 14),
                   _summary(svc.summary(s)),
                   const SizedBox(height: 18),
-                  const Text('المواد', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppTheme.primaryDark)),
+                  const Text('المواد', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AdminColors.ink)),
                   const SizedBox(height: 8),
                   _receipts(svc.receipts(s)),
                   const SizedBox(height: 18),
-                  const Text('الطلاب', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppTheme.primaryDark)),
+                  const Text('الطلاب', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AdminColors.ink)),
                   const SizedBox(height: 8),
                   if (students.isEmpty)
                     const Text('لا يوجد طلاب في هذه الشعبة.')

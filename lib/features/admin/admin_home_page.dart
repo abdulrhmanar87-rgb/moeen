@@ -23,6 +23,16 @@ class AdminHomePage extends StatefulWidget {
 }
 
 class _AdminHomePageState extends State<AdminHomePage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await BackupActions.remindOnOpen(context, widget.store);
+      if (mounted) setState(() {});
+    });
+  }
+
   static const _ink = AdminColors.ink;
   AppStore get store => widget.store;
 

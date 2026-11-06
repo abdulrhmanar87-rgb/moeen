@@ -143,6 +143,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
   }
 
   Widget _attendance(MoeenPalette p) {
+    final days = store.attendanceDays(sid);
     final records = store.attendance.where((a) => a.studentId == st.id && a.sectionId == sid).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
     final absent = records.where((r) => r.status == 'غائب').toList();
@@ -154,11 +155,11 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
     }
 
     return _card(p, 'الحضور', Icons.how_to_reg_outlined, [
-      if (records.isEmpty)
+      if (days.isEmpty)
         Text('لم يُسجَّل حضور بعد.', style: TextStyle(color: Colors.grey.shade600))
       else ...[
         Wrap(spacing: 8, runSpacing: 8, children: [
-          _stat('أيام مسجلة', '${records.length}', p.ink),
+          _stat('أيام مسجلة', '${days.length}', p.ink),
           _stat('غياب', '${absent.length}', absent.isEmpty ? _green : _red),
           if (excused.isNotEmpty) _stat('إجازة', '${excused.length}', _amber),
           if (rate != null) _stat('نسبة الحضور', '${_fmt(rate)}%', rate < 85 ? _red : _green),

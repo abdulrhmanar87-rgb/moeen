@@ -66,6 +66,39 @@ class _MoeenAppState extends State<MoeenApp> {
       darkTheme: store?.isAdmin == true ? AppTheme.adminDark : AppTheme.dark,
       themeMode: ThemeMode.system,
       home: home,
+      // شريط أحمر ثابت إذا فشل الحفظ، حتى لا يظن المدرس أن الدرجات حُفظت.
+      builder: (context, child) => store == null
+          ? child!
+          : ValueListenableBuilder<String?>(
+              valueListenable: store.saveError,
+              builder: (context, error, _) => Column(children: [
+                if (error != null)
+                  Material(
+                    color: const Color(0xFFD64545),
+                    child: SafeArea(
+                      bottom: false,
+                      child: Directionality(
+                        textDirection: TextDirection.rtl,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+                          child: Row(children: [
+                            const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(error, style: const TextStyle(color: Colors.white, height: 1.4)),
+                            ),
+                            TextButton(
+                              onPressed: store.saveAll,
+                              child: const Text('إعادة المحاولة', style: TextStyle(color: Colors.white)),
+                            ),
+                          ]),
+                        ),
+                      ),
+                    ),
+                  ),
+                Expanded(child: child!),
+              ]),
+            ),
     );
   }
 }

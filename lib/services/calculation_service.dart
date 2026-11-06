@@ -126,13 +126,14 @@ class CalculationService {
 
   /// نسبة حضور الطالب (معلومة للمتابعة فقط، لا تدخل في السعي).
   double? attendanceRate(String studentId, String sectionId) {
-    final records = store.attendance
-        .where((a) => a.studentId == studentId && a.sectionId == sectionId)
-        .toList();
-    final required = records.where((r) => r.status != 'مجاز').length;
-    if (required == 0) return null;
-    final present = records.where((r) => r.status == 'حاضر').length;
-    return present / required * 100;
+    final days = store.attendanceDays(sectionId);
+    if (days.isEmpty) return null;
+    final mine = store.attendance.where((a) => a.studentId == studentId && a.sectionId == sectionId);
+    final absent = mine.where((r) => r.status == 'غائب').length;
+    final excused = mine.where((r) => r.status == 'مجاز').length;
+    final required = days.length - excused;
+    if (required <= 0) return null;
+    return (required - absent).clamp(0, required) / required * 100;
   }
 
   /// درجة الامتحان الشهري (من 100)، أو null إذا لم تُدخل أو كان الطالب مؤجلاً.

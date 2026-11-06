@@ -26,6 +26,16 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await BackupActions.remindOnOpen(context, widget.store);
+      if (mounted) setState(() {});
+    });
+  }
+
 
   static const _ink = AppTheme.primaryDark;
   static const _tabColors = [

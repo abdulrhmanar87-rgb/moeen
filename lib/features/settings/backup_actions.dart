@@ -47,6 +47,40 @@ class BackupActions {
     return last == null || DateTime.now().difference(last).inDays >= reminderDays;
   }
 
+  static bool _remindedThisSession = false;
+
+  /// عند فتح التطبيق: نافذة تذكير واحدة إذا مرّ أسبوع بلا نسخة احتياطية.
+  static Future<void> remindOnOpen(BuildContext context, AppStore store) async {
+    if (_remindedThisSession || !needsReminder(store)) return;
+    _remindedThisSession = true;
+    final last = store.lastBackupAt;
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (dc) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          icon: const Icon(Icons.shield_outlined, color: Color(0xFF8A5A00), size: 34),
+          title: const Text('احفظ نسخة احتياطية'),
+          content: Text(
+            '${last == null ? 'لم تحفظ نسخة احتياطية بعد' : 'آخر نسخة احتياطية ${ago(last)}'}. '
+            'بياناتك موجودة على هذا الجهاز فقط، والنسخة تحميها إذا مُسح المتصفح أو تعطل الجهاز. '
+            'أرسل الملف بعد حفظه إلى واتساب أو Google Drive.',
+            style: const TextStyle(height: 1.6),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dc, false), child: const Text('لاحقاً')),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(dc, true),
+              icon: const Icon(Icons.download_rounded),
+              label: const Text('حفظ نسخة الآن'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (go == true && context.mounted) await export(context, store);
+  }
+
   static void _snack(BuildContext context, String message) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 

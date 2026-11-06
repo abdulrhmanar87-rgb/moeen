@@ -1,10 +1,10 @@
 name: moeen
 description: "مُعين — مساعد الأستاذ"
 publish_to: "none"
-version: 3.4.0+23
+version: 3.5.0+24
 
 environment:
-  sdk: ">=3.3.0 <4.0.0"
+  sdk: ">=3.4.0 <4.0.0"
 
 dependencies:
   flutter:

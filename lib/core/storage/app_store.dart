@@ -1,5 +1,7 @@
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
+
+import 'kv_store.dart';
 import '../../models/school.dart';
 import '../../models/student.dart';
 import '../../models/academic.dart';
@@ -33,7 +35,14 @@ class AppStore {
   static const _ratingsKey = 'moeen_semester_ratings';
   static const _subjectGradesKey = 'moeen_subject_grades';
 
-  late SharedPreferences _prefs;
+  late KvStore _prefs;
+
+  /// رسالة خطأ إذا فشل آخر حفظ (مثل امتلاء المساحة)، وإلا null.
+  final saveError = ValueNotifier<String?>(null);
+
+  /// نوع التخزين وحالة حمايته (للإعدادات).
+  String get storageBackend => _prefs.backend;
+  bool? get storagePersisted => _prefs.persisted;
   School? school;
   List<AcademicYear> years = [];
   List<Section> sections = [];
@@ -65,7 +74,7 @@ class AppStore {
   }
 
   Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
+    _prefs = await KvStore.open();
     final schoolRaw = _prefs.getString(_k(_schoolKey));
     if (schoolRaw != null) school = School.fromJson(jsonDecode(schoolRaw));
     years = _decode(_k(_yearsKey), AcademicYear.fromJson);
@@ -73,6 +82,7 @@ class AppStore {
     students = _decode(_k(_studentsKey), Student.fromJson);
     enrollments = _decode(_k(_enrollmentsKey), Enrollment.fromJson);
     attendance = _decode(_k(_attendanceKey), AttendanceRecord.fromJson);
+    _compactAttendance();
     behavior = _decode(_k(_behaviorKey), BehaviorEvent.fromJson);
     participation = _decode(_k(_participationKey), ParticipationEvent.fromJson);
     dailyExams = _decode(_k(_dailyExamsKey), DailyExam.fromJson);
@@ -101,27 +111,34 @@ class AppStore {
 
   String id() => '${DateTime.now().microsecondsSinceEpoch}_${students.length + years.length + sections.length}';
 
-  Future<void> _save(String key, List<dynamic> list) =>
-      _prefs.setString(key, jsonEncode(list.map((e) => e.toJson()).toList()));
+  String _enc(List<dynamic> list) => jsonEncode(list.map((e) => e.toJson()).toList());
 
+  /// يحفظ كل شيء في معاملة واحدة، ولا يكتب إلا ما تغيّر.
   Future<void> saveAll() async {
-    if (school != null) {
-      await _prefs.setString(_k(_schoolKey), jsonEncode(school!.toJson()));
+    final values = <String, String>{
+      if (school != null) _k(_schoolKey): jsonEncode(school!.toJson()),
+      _k(_yearsKey): _enc(years),
+      _k(_sectionsKey): _enc(sections),
+      _k(_studentsKey): _enc(students),
+      _k(_enrollmentsKey): _enc(enrollments),
+      _k(_attendanceKey): _enc(attendance),
+      _k(_behaviorKey): _enc(behavior),
+      _k(_participationKey): _enc(participation),
+      _k(_dailyExamsKey): _enc(dailyExams),
+      _k(_dailyScoresKey): _enc(dailyScores),
+      _k(_monthlyScoresKey): _enc(monthlyScores),
+      _k(_midyearKey): _enc(midyearScores),
+      _k(_ratingsKey): _enc(semesterRatings),
+      _k(_subjectGradesKey): _enc(subjectGrades),
+      _k(_settingsKey): jsonEncode(settings),
+    };
+    try {
+      await _prefs.setMany(values);
+      if (saveError.value != null) saveError.value = null;
+    } catch (_) {
+      saveError.value = 'تعذر حفظ آخر التغييرات على هذا الجهاز. احفظ نسخة احتياطية الآن من الإعدادات، '
+          'وتأكد من وجود مساحة فارغة.';
     }
-    await _save(_k(_yearsKey), years);
-    await _save(_k(_sectionsKey), sections);
-    await _save(_k(_studentsKey), students);
-    await _save(_k(_enrollmentsKey), enrollments);
-    await _save(_k(_attendanceKey), attendance);
-    await _save(_k(_behaviorKey), behavior);
-    await _save(_k(_participationKey), participation);
-    await _save(_k(_dailyExamsKey), dailyExams);
-    await _save(_k(_dailyScoresKey), dailyScores);
-    await _save(_k(_monthlyScoresKey), monthlyScores);
-    await _save(_k(_midyearKey), midyearScores);
-    await _save(_k(_ratingsKey), semesterRatings);
-    await _save(_k(_subjectGradesKey), subjectGrades);
-    await _prefs.setString(_k(_settingsKey), jsonEncode(settings));
   }
 
   List<Student> studentsOf(String sectionId) {
@@ -214,51 +231,76 @@ class AppStore {
     required String studentId,
     required String status,
   }) async {
-    final i = attendance.indexWhere((a) =>
-        a.sectionId == sectionId && a.date == date && a.studentId == studentId);
-    if (i >= 0) {
-      attendance[i].status = status;
-    } else {
-      attendance.add(AttendanceRecord(
-        id: id(),
-        studentId: studentId,
-        sectionId: sectionId,
-        date: date,
-        status: status,
-      ));
-    }
-    await saveAll();
+    final ids = studentsOf(sectionId).map((s) => s.id).toList();
+    final map = {for (final id in ids) id: attendanceOf(sectionId, date, id) ?? 'حاضر'}..[studentId] = status;
+    await saveAttendanceDay(sectionId: sectionId, date: date, studentIds: ids, statuses: map);
   }
+
+  /// علامة «سُجّل حضور هذا اليوم»: سجل بلا طالب. الحاضرون لا يُخزَّنون،
+  /// فقط الغائب والمجاز، فيبقى حجم البيانات صغيراً طوال السنة.
+  static const attendanceDayMarker = 'يوم';
 
   /// حالة الطالب في يوم، أو null إذا لم يُسجَّل حضور ذلك اليوم.
   String? attendanceOf(String sectionId, String date, String studentId) {
+    var taken = false;
     for (final a in attendance) {
-      if (a.sectionId == sectionId && a.date == date && a.studentId == studentId) return a.status;
+      if (a.sectionId != sectionId || a.date != date) continue;
+      if (a.studentId == studentId) return a.status;
+      taken = true;
     }
-    return null;
+    return taken ? 'حاضر' : null;
   }
 
   /// هل سُجّل حضور هذه الشعبة في هذا اليوم؟
   bool attendanceTaken(String sectionId, String date) =>
       attendance.any((a) => a.sectionId == sectionId && a.date == date);
 
-  /// تسجيل حضور يوم كامل بحفظ واحد: من لم تُحدد حالته يُسجَّل «حاضر».
+  /// الأيام التي سُجّل فيها حضور الشعبة.
+  Set<String> attendanceDays(String sectionId) =>
+      {for (final a in attendance) if (a.sectionId == sectionId) a.date};
+
+  /// تسجيل حضور يوم كامل بحفظ واحد: من لم تُحدد حالته يُعد «حاضر».
   Future<void> saveAttendanceDay({
     required String sectionId,
     required String date,
     required List<String> studentIds,
     required Map<String, String> statuses,
   }) async {
+    attendance.removeWhere((a) => a.sectionId == sectionId && a.date == date);
+    attendance.add(AttendanceRecord(
+      id: 'd_${sectionId}_$date',
+      studentId: '',
+      sectionId: sectionId,
+      date: date,
+      status: attendanceDayMarker,
+    ));
     for (final sid in studentIds) {
       final status = statuses[sid] ?? 'حاضر';
-      final i = attendance.indexWhere((a) => a.sectionId == sectionId && a.date == date && a.studentId == sid);
-      if (i >= 0) {
-        attendance[i].status = status;
-      } else {
-        attendance.add(AttendanceRecord(id: '${id()}_a${attendance.length}', studentId: sid, sectionId: sectionId, date: date, status: status));
-      }
+      if (status == 'حاضر') continue;
+      attendance.add(AttendanceRecord(id: 'a_${date}_$sid', studentId: sid, sectionId: sectionId, date: date, status: status));
     }
     await saveAll();
+  }
+
+  /// يحوّل سجلات الحضور القديمة (سجل لكل حاضر) إلى الشكل المختصر.
+  void _compactAttendance() {
+    if (!attendance.any((a) => a.status == 'حاضر')) return;
+    final days = <String>{};
+    final kept = <AttendanceRecord>[];
+    for (final a in attendance) {
+      final key = '${a.sectionId}|${a.date}';
+      if (days.add(key)) {
+        kept.add(AttendanceRecord(
+          id: 'd_${a.sectionId}_${a.date}',
+          studentId: '',
+          sectionId: a.sectionId,
+          date: a.date,
+          status: attendanceDayMarker,
+        ));
+      }
+      if (a.studentId.isNotEmpty && a.status != 'حاضر' && a.status != attendanceDayMarker) kept.add(a);
+    }
+    attendance = kept;
   }
 
   /// حذف تسجيل حضور يوم كامل لشعبة.
@@ -413,7 +455,7 @@ class AppStore {
 
   Future<void> markBackedUp() async {
     settings['lastBackupAt'] = DateTime.now().toIso8601String();
-    await _prefs.setString(_k(_settingsKey), jsonEncode(settings));
+    await saveAll();
   }
 
   /// كل بيانات مُعين في ملف واحد. مفتاح القراءة الذكية لا يُصدَّر حفاظاً على خصوصيته.
@@ -526,6 +568,7 @@ class AppStore {
     students = newStudents;
     enrollments = newEnrollments;
     attendance = newAttendance;
+    _compactAttendance();
     behavior = newBehavior;
     participation = newParticipation;
     dailyExams = newDailyExams;

@@ -320,8 +320,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _backupSection(AppStore store) {
     final size = store.dataSizeBytes;
-    // المتصفح يسمح بحوالي 5 ميغابايت؛ ننبّه قبل الامتلاء بوقت كافٍ.
-    final nearLimit = size > 3.5 * 1024 * 1024;
+    // localStorage يسمح بحوالي 5 ميغابايت؛ IndexedDB أكبر بكثير.
+    final limited = store.storageBackend.contains('localStorage');
+    final nearLimit = limited && size > 3.5 * 1024 * 1024;
+    final persisted = store.storagePersisted;
     final last = store.lastBackupAt;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       const Padding(
@@ -363,8 +365,17 @@ class _SettingsPageState extends State<SettingsPage> {
         title: Text('حجم البيانات: ${BackupActions.formatSize(size)}'),
         subtitle: Text(nearLimit
             ? 'اقتربت البيانات من الحد الذي يسمح به المتصفح (حوالي 5 ميغابايت). احفظ نسخة احتياطية الآن.'
-            : 'المتصفح يسمح بحوالي 5 ميغابايت.'),
+            : 'مكان الحفظ: ${store.storageBackend}${limited ? '، يسمح بحوالي 5 ميغابايت' : '، سعته كبيرة'}.'),
       ),
+      if (persisted != null)
+        ListTile(
+          leading: Icon(persisted ? Icons.verified_user_outlined : Icons.info_outline_rounded,
+              color: persisted ? const Color(0xFF2E8B57) : const Color(0xFF8A5A00)),
+          title: Text(persisted ? 'البيانات محمية من المسح التلقائي' : 'البيانات غير محمية من المسح التلقائي'),
+          subtitle: Text(persisted
+              ? 'لن يمسحها المتصفح وحده عند امتلاء القرص. مسحها يدوياً من إعدادات المتصفح ما زال ممكناً، فاستمر بالنسخ الاحتياطي.'
+              : 'قد يمسحها المتصفح إذا امتلأ القرص. ثبّت مُعين على الشاشة الرئيسية أو سطح المكتب لتحسين الحماية، واستمر بالنسخ الاحتياطي.'),
+        ),
     ]);
   }
 

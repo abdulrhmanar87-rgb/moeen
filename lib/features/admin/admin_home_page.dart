@@ -197,11 +197,28 @@ class _AdminHomePageState extends State<AdminHomePage> {
       byGrade.putIfAbsent(s.gradeName.trim(), () => []).add(s);
     }
     final grades = byGrade.keys.toList()..sort((a, b) => _gradeOrder(a).compareTo(_gradeOrder(b)));
+    // بطاقة واحدة: كل صف سطر أفقي (اسم الصف ثم شعبه متجاورة).
+    final card = Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: AdminColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: [
+        for (var i = 0; i < grades.length; i++) ...[
+          _gradeBlock(grades[i], byGrade[grades[i]]!..sort((a, b) => a.name.compareTo(b.name)), selected, svc),
+          if (i < grades.length - 1) const Divider(height: 1, color: AdminColors.border),
+        ],
+      ]),
+    );
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      for (final g in grades) ...[
-        _gradeBlock(g, byGrade[g]!..sort((a, b) => a.name.compareTo(b.name)), selected, svc),
-        const SizedBox(height: 12),
-      ],
+      card,
+      Padding(
+        padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
+        child: Text('الرقم بجانب الشعبة عدد طلابها، والدائرة عدد المواد المستلمة. اضغط الشعبة لفتح نتائجها.',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+      ),
     ]);
   }
 
@@ -223,93 +240,90 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
   Widget _gradeBlock(String grade, List<Section> sections, Section? selected, AdminResultsService svc) {
     final students = sections.fold<int>(0, (n, s) => n + store.studentsOf(s.id).length);
-    return Material(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: AdminColors.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(children: [
-            Container(width: 4, height: 22, decoration: BoxDecoration(color: AdminColors.gold, borderRadius: BorderRadius.circular(2))),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(grade.isEmpty ? 'بدون صف' : grade,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _ink)),
-            ),
-            Text('${sections.length} شعبة، $students طالب', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
-          ]),
-          const SizedBox(height: 12),
-          LayoutBuilder(builder: (context, c) {
-            // عدد الأعمدة حسب عرض الشاشة: 2 على الهاتف حتى 5 على الحاسوب.
-            final cols = (c.maxWidth / 170).floor().clamp(2, 5);
-            final w = (c.maxWidth - (cols - 1) * 10) / cols;
-            return Wrap(spacing: 10, runSpacing: 10, children: [
-              for (final s in sections) SizedBox(width: w, child: _sectionTile(s, selected?.id == s.id, svc)),
-            ]);
-          }),
-        ]),
-      ),
-    );
+    final label = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+      Text(grade.isEmpty ? 'بدون صف' : grade,
+          maxLines: 2, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w900, color: _ink, height: 1.3)),
+      Text('$students طالب', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+    ]);
+    final chips = Wrap(spacing: 8, runSpacing: 8, children: [
+      for (final s in sections) _sectionTile(s, selected?.id == s.id, svc),
+    ]);
+    return LayoutBuilder(builder: (context, c) {
+      final narrow = c.maxWidth < 460;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+        child: narrow
+            ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [label, const SizedBox(height: 8), chips])
+            : Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                Container(
+                  width: 3,
+                  height: 34,
+                  margin: const EdgeInsetsDirectional.only(end: 10),
+                  decoration: BoxDecoration(color: AdminColors.gold, borderRadius: BorderRadius.circular(2)),
+                ),
+                SizedBox(width: 130, child: label),
+                const SizedBox(width: 12),
+                Expanded(child: chips),
+              ]),
+      );
+    });
   }
 
+  /// شعبة مضغوطة: الاسم، عدد الطلاب، ودائرة تقدم المواد المستلمة.
   Widget _sectionTile(Section s, bool isSelected, AdminResultsService svc) {
     final receipts = svc.receipts(s);
     final done = receipts.where((r) => r.isComplete).length;
     final total = receipts.length;
     final complete = total > 0 && done == total;
     final count = store.studentsOf(s.id).length;
-    final barColor = complete ? AppTheme.success : AdminColors.gold;
-    return Material(
-      color: isSelected ? AdminColors.selected : AdminColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: isSelected ? _ink : AdminColors.border, width: isSelected ? 2 : 1),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () async {
-          await store.setCurrentSection(s.id);
-          await open(AdminResultsPage(store: store));
-        },
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Expanded(
-                child: Text('شعبة ${s.name}',
+    return Tooltip(
+      message: complete ? 'اكتملت المواد' : 'وصلت $done من $total مادة',
+      child: Material(
+        color: isSelected ? AdminColors.selected : AdminColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: isSelected ? _ink : AdminColors.border, width: isSelected ? 1.6 : 1),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () async {
+            await store.setCurrentSection(s.id);
+            await open(AdminResultsPage(store: store));
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 7, 12, 7),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 120),
+                child: Text(s.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: _ink)),
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: _ink)),
               ),
-              Icon(complete ? Icons.check_circle_rounded : Icons.chevron_left_rounded,
-                  size: 20, color: complete ? AppTheme.success : Colors.grey.shade500),
+              const SizedBox(width: 8),
+              Text(count == 0 ? 'فارغة' : '$count',
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: count == 0 ? const Color(0xFFD64545) : Colors.grey.shade700)),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: complete
+                    ? const Icon(Icons.check_circle_rounded, size: 22, color: AppTheme.success)
+                    : Stack(alignment: Alignment.center, children: [
+                        CircularProgressIndicator(
+                          value: total == 0 ? 0 : done / total,
+                          strokeWidth: 3,
+                          backgroundColor: AdminColors.border,
+                          valueColor: const AlwaysStoppedAnimation(AdminColors.gold),
+                        ),
+                        Text('$done', style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: Color(0xFF8A5A00))),
+                      ]),
+              ),
             ]),
-            const SizedBox(height: 2),
-            Text(count == 0 ? 'لا يوجد طلاب' : '$count طالب',
-                style: TextStyle(fontSize: 13, color: count == 0 ? const Color(0xFFD64545) : Colors.grey.shade700)),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: total == 0 ? 0 : done / total,
-                minHeight: 6,
-                backgroundColor: AdminColors.border,
-                valueColor: AlwaysStoppedAnimation(barColor),
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              complete ? 'اكتملت المواد' : 'وصلت $done من $total مادة',
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-                color: complete ? AppTheme.success : const Color(0xFF8A5A00),
-              ),
-            ),
-          ]),
+          ),
         ),
       ),
     );

@@ -1,12 +1,11 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/semesters.dart';
-import '../../core/sound/tick_sound.dart';
 import '../../core/storage/app_store.dart';
 import '../../core/utils/arabic_numbers.dart';
 import '../../models/assessment.dart';
 import '../../services/calculation_service.dart';
 import 'grade_entry_page.dart';
+import 'rating_slider.dart';
 
 class ExamsPage extends StatefulWidget {
   const ExamsPage({super.key, required this.store, this.initialSectionId});
@@ -444,33 +443,16 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
     final shown = dragging ? _drag[studentId]!.round() : saved;
     final color = _ratingColor(shown);
 
-    Widget slider(double value) => CupertinoSlider(
-          value: value.clamp(0, 10).toDouble(),
-          min: 0,
-          max: 10,
-          activeColor: color,
-          onChangeStart: (v) => setState(() => _drag[studentId] = v),
-          onChanged: (v) {
-            final before = (_drag[studentId] ?? v).round();
-            setState(() => _drag[studentId] = v);
-            if (v.round() != before && _soundOn) playTick(v);
-          },
-          onChangeEnd: (v) {
-            final score = v.round().clamp(0, 10);
-            setState(() => _drag.remove(studentId));
-            store.setRating(studentId, sid, semester, score);
-            if (_soundOn) playSettle(score.toDouble());
-          },
-        );
-
-    // شريط واحد ثابت: يتبع الإصبع فوراً أثناء السحب، وعند الترك
-    // ينزلق بنعومة إلى أقرب درجة صحيحة (المحفوظة).
-    final sliderWidget = TweenAnimationBuilder<double>(
-      key: ValueKey('rating-$studentId'),
-      tween: Tween(end: dragging ? _drag[studentId]! : (saved ?? 8).toDouble()),
-      duration: dragging ? Duration.zero : const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      builder: (_, v, __) => slider(v),
+    final sliderWidget = RatingSlider(
+      key: ValueKey('rating-$studentId-$semester'),
+      value: saved,
+      sound: _soundOn,
+      colorOf: _ratingColor,
+      onPreview: (v) => setState(() => v == null ? _drag.remove(studentId) : _drag[studentId] = v.toDouble()),
+      onChanged: (score) async {
+        await store.setRating(studentId, sid, semester, score);
+        if (mounted) setState(() {});
+      },
     );
 
     return Padding(
@@ -492,13 +474,16 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
             ),
           ),
         ]),
-        const SizedBox(height: 4),
         Row(children: [
-          Text('0', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
-          Expanded(
-            child: Opacity(opacity: saved == null && !dragging ? 0.55 : 1, child: sliderWidget),
+          Padding(
+            padding: const EdgeInsets.only(top: 22),
+            child: Text('0', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
           ),
-          Text('10', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+          Expanded(child: sliderWidget),
+          Padding(
+            padding: const EdgeInsets.only(top: 22),
+            child: Text('10', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+          ),
         ]),
       ]),
     );

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/semesters.dart';
 import '../../core/sound/tick_sound.dart';
 import '../../core/storage/app_store.dart';
+import '../../core/utils/arabic_numbers.dart';
 import '../../models/assessment.dart';
 import '../../services/calculation_service.dart';
 import 'grade_entry_page.dart';
@@ -37,15 +38,6 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
     super.dispose();
   }
 
-  double get _dailyExamInputMax {
-    final raw = widget.store.settings['dailyExamInputMax'];
-    final value = raw is num
-        ? raw.toDouble()
-        : double.tryParse(raw?.toString() ?? '');
-    if (value == null || value <= 0) return 10;
-    return value.clamp(1, 100).toDouble();
-  }
-
   String _maxText(double v) => v.toStringAsFixed(v % 1 == 0 ? 0 : 2);
 
   @override
@@ -56,9 +48,9 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
         appBar: AppBar(
           title: const Text('الامتحانات والدرجات'),
           bottom: TabBar(controller: tabs, tabs: [
-            Tab(text: 'يومي من ${_maxText(_dailyExamInputMax)}'),
+            Tab(text: widget.store.componentLabel('daily')),
             const Tab(text: 'شهري ونصف السنة'),
-            const Tab(text: 'التقدير'),
+            Tab(text: widget.store.componentLabel('rating')),
           ]),
         ),
         body: Column(
@@ -131,7 +123,7 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
                     child: ListTile(
                       onTap: () => _enterDaily(exams[i]),
                       title: Text(exams[i].title),
-                      subtitle: Text('${exams[i].date} • ${_enteredCount(exams[i].id)} درجة مدخلة'),
+                      subtitle: Text('من ${_maxText(widget.store.dailyMaxOf(exams[i]))} • ${exams[i].date} • ${_enteredCount(exams[i].id)} درجة مدخلة'),
                       trailing: FilledButton(
                         onPressed: () => _enterDaily(exams[i]),
                         child: const Text('الدرجات'),
@@ -149,14 +141,18 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
     final n = store.dailyExams.where((e) => e.sectionId == sectionId && e.semester == semester).length + 1;
     final title = TextEditingController(text: 'يومي $n');
     title.selection = TextSelection(baseOffset: 0, extentOffset: title.text.length);
+    final maxC = TextEditingController(text: _maxText(store.lastDailyMax));
     Future<void> create(BuildContext dialogContext) async {
       final t = title.text.trim().isEmpty ? 'يومي $n' : title.text.trim();
+      final m = double.tryParse(ArabicNumbers.toEnglish(maxC.text.trim()));
+      final max = (m == null || m <= 0) ? store.lastDailyMax : m.clamp(1, 100).roundToDouble();
       final exam = DailyExam(
         id: store.id(),
         sectionId: sectionId!,
         date: DateTime.now().toIso8601String().substring(0, 10),
         title: t,
         semester: semester,
+        maxScore: max,
       );
       store.dailyExams.add(exam);
       await store.saveAll();
@@ -169,12 +165,28 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: Text('امتحان يومي جديد، ${Semesters.name(semester)}'),
-          content: TextField(
-            controller: title,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'اسم الامتحان'),
-            onSubmitted: (_) => create(dialogContext),
-          ),
+          content: Row(children: [
+            Expanded(
+              flex: 3,
+              child: TextField(
+                controller: title,
+                autofocus: true,
+                decoration: const InputDecoration(labelText: 'اسم الامتحان'),
+                onSubmitted: (_) => create(dialogContext),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 2,
+              child: TextField(
+                controller: maxC,
+                keyboardType: TextInputType.number,
+                inputFormatters: const [EnglishDigitsFormatter()],
+                decoration: const InputDecoration(labelText: 'الدرجة الكاملة'),
+                onSubmitted: (_) => create(dialogContext),
+              ),
+            ),
+          ]),
           actions: [
             TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
             FilledButton(onPressed: () => create(dialogContext), child: const Text('إنشاء وإدخال الدرجات')),
@@ -205,7 +217,7 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
         builder: (_) => GradeEntryPage(
           title: exam.title,
           subtitle: 'امتحان يومي',
-          max: _dailyExamInputMax,
+          max: store.dailyMaxOf(exam),
           students: students,
           initial: initial,
           onSave: (values) async {
@@ -253,7 +265,7 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
     return ListView(
       padding: const EdgeInsets.all(14),
       children: [
-        Text('الامتحانات الشهرية — ${Semesters.name(semester)} (من 100)',
+        Text('${store.componentLabel('monthly')} — ${Semesters.name(semester)} (من 100)',
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 10),
         for (final period in periods)
@@ -286,10 +298,11 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
         _endOfYear(students.cast()),
         const SizedBox(height: 14),
         Text(
-          'سعي الفصل = معدل الامتحانات الشهرية (${store.weight('monthlyExamsWeight', 70)}) '
-          '+ معدل الامتحانات اليومية (${store.weight('dailyExamsWeight', 20)}) '
-          '+ تقدير السلوك والمشاركة (${store.weight('ratingWeight', 10)}). '
-          'الطالب المؤجل أو الغائب يُستبعد امتحانه من معدله.',
+          'سعي الفصل = ${store.componentLabel('monthly')} (${store.weight('monthlyExamsWeight', 70)}) '
+          '+ ${store.componentLabel('daily')} (${store.weight('dailyExamsWeight', 20)}) '
+          '+ ${store.componentLabel('rating')} (${store.weight('ratingWeight', 10)}). '
+          'كل عنصر يُحسب بالتناسب من معدل امتحاناته مهما كان عددها، '
+          'والطالب المؤجل أو الغائب يُستبعد امتحانه من معدله.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.6),
         ),
       ],
@@ -376,7 +389,7 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
       children: [
         Row(children: [
           Expanded(
-            child: Text('تقدير السلوك والمشاركة، ${Semesters.name(semester)}',
+            child: Text('${store.componentLabel('rating')}، ${Semesters.name(semester)}',
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ),
           IconButton(

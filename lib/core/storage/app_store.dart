@@ -66,6 +66,32 @@ class AppStore {
     'ratingWeight': 10,
   };
 
+  /// أسماء عناصر سعي الفصل، قابلة للتعديل من الإعدادات (مثل «العملي» بدل «اليومي»).
+  static const componentDefaults = {
+    'monthly': 'الامتحانات الشهرية',
+    'daily': 'الامتحانات اليومية',
+    'rating': 'السلوك والمشاركة',
+  };
+
+  String componentLabel(String key) {
+    final v = settings['label_$key'];
+    if (v is String && v.trim().isNotEmpty) return v.trim();
+    return componentDefaults[key] ?? key;
+  }
+
+  /// الدرجة الكاملة للامتحانات اليومية القديمة التي أُنشئت قبل أن يكون لكل امتحان درجته.
+  double get legacyDailyMax {
+    final raw = settings['dailyExamInputMax'];
+    final value = raw is num ? raw.toDouble() : double.tryParse(raw?.toString() ?? '');
+    if (value == null || value <= 0) return 10;
+    return value.clamp(1, 100).toDouble();
+  }
+
+  double dailyMaxOf(DailyExam e) => e.maxScore ?? legacyDailyMax;
+
+  /// الدرجة الكاملة المقترحة لامتحان يومي جديد: نفس آخر امتحان أُنشئ.
+  double get lastDailyMax => dailyExams.isEmpty ? legacyDailyMax : dailyMaxOf(dailyExams.last);
+
   int weight(String key, int fallback) {
     final value = settings[key];
     if (value is num) return value.toInt().clamp(0, 100);

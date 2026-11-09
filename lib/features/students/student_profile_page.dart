@@ -214,7 +214,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
         ),
       ),
       [
-        Text('الامتحانات الشهرية', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.grey.shade800)),
+        Text(b.monthlyLabel, style: TextStyle(fontWeight: FontWeight.w800, color: Colors.grey.shade800)),
         for (final m in Semesters.months(b.semester))
           _line(
             m,
@@ -222,23 +222,23 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
             color: monthStatus[m] == 'مؤجل' ? _amber : _scoreColor(b.monthlyScores[m]),
           ),
         const Divider(height: 18),
-        Text('الامتحانات اليومية (من ${_fmt(b.dailyMax)})',
+        Text(b.dailyLabel,
             style: TextStyle(fontWeight: FontWeight.w800, color: Colors.grey.shade800)),
         if (exams.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Text('لا توجد امتحانات يومية في هذا الفصل.', style: TextStyle(color: Colors.grey.shade600)),
           ),
-        for (final e in exams) _dailyLine(e.id, e.title.isEmpty ? e.date : e.title, b.dailyMax),
+        for (final e in exams) _dailyLine(e.id, e.title.isEmpty ? e.date : e.title, store.dailyMaxOf(e)),
         const Divider(height: 18),
         _line(
-          'تقدير السلوك والمشاركة',
+          b.ratingLabel,
           b.ratingScore == null ? '—' : '${b.ratingScore} من 10 (${RatingLevels.label(b.ratingScore!)})',
         ),
         const Divider(height: 18),
-        _line('الشهري (من ${_fmt(b.monthlyWeight)})', _fmt(b.monthlyPart)),
-        _line('اليومي (من ${_fmt(b.dailyWeight)})', _fmt(b.dailyPart)),
-        _line('التقدير (من ${_fmt(b.ratingWeight)})', _fmt(b.ratingPart)),
+        _line('${b.monthlyLabel} (من ${_fmt(b.monthlyWeight)})', _fmt(b.monthlyPart)),
+        _line('${b.dailyLabel} (من ${_fmt(b.dailyWeight)})', _fmt(b.dailyPart)),
+        _line('${b.ratingLabel} (من ${_fmt(b.ratingWeight)})', _fmt(b.ratingPart)),
         if (total == null && b.partialTotal > 0)
           _line('المجموع حتى الآن', _fmt(b.partialTotal), bold: true),
         if (b.missing.isNotEmpty)
@@ -256,7 +256,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
     for (final s in store.dailyScores) {
       if (s.examId == examId && s.studentId == st.id) {
         if (s.status == 'درجة' && s.score != null) {
-          value = _fmt(s.score);
+          value = '${_fmt(s.score)} / ${_fmt(max)}';
           color = _scoreColor(s.score, max);
         } else {
           value = 'غائب';

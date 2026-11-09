@@ -103,12 +103,16 @@ class DailyExam {
     required this.date,
     required this.title,
     this.semester = 1,
+    this.maxScore,
   });
 
   final String id;
   final String sectionId;
   final String date;
   final String title;
+
+  /// الدرجة الكاملة لهذا الامتحان (مثل 10 أو 20). null للامتحانات القديمة.
+  double? maxScore;
 
   /// الفصل الدراسي (1 أو 2) الذي يدخل فيه الامتحان.
   int semester;
@@ -119,6 +123,7 @@ class DailyExam {
         'date': date,
         'title': title,
         'semester': semester,
+        if (maxScore != null) 'maxScore': maxScore,
       };
 
   factory DailyExam.fromJson(Map<String, dynamic> j) {
@@ -135,6 +140,7 @@ class DailyExam {
       date: date,
       title: j['title'] ?? '',
       semester: semester == 2 ? 2 : 1,
+      maxScore: j['maxScore'] is num && (j['maxScore'] as num) > 0 ? (j['maxScore'] as num).toDouble() : null,
     );
   }
 }

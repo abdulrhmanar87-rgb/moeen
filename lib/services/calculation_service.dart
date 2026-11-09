@@ -18,14 +18,20 @@ class SemesterBreakdown {
     required this.monthlyWeight,
     required this.dailyWeight,
     required this.ratingWeight,
+    this.monthlyLabel = 'الامتحانات الشهرية',
+    this.dailyLabel = 'الامتحانات اليومية',
+    this.ratingLabel = 'السلوك والمشاركة',
   });
 
   final int semester;
+  final String monthlyLabel;
+  final String dailyLabel;
+  final String ratingLabel;
 
   /// درجات الامتحانات الشهرية المدخلة (من 100) لكل شهر من أشهر الفصل.
   final Map<String, double> monthlyScores;
 
-  /// درجات الامتحانات اليومية التي حضرها الطالب (من [dailyMax]).
+  /// نسب الامتحانات اليومية التي حضرها الطالب (من [dailyMax] = 100).
   final List<double> dailyScores;
   final double dailyMax;
 
@@ -55,9 +61,9 @@ class SemesterBreakdown {
 
   /// العناصر الناقصة لاكتمال سعي الفصل.
   List<String> get missing => [
-        if (monthlyWeight > 0 && monthlyAverage == null) 'الامتحانات الشهرية',
-        if (dailyWeight > 0 && dailyAverage == null) 'الامتحانات اليومية',
-        if (ratingWeight > 0 && ratingScore == null) 'تقدير السلوك والمشاركة',
+        if (monthlyWeight > 0 && monthlyAverage == null) monthlyLabel,
+        if (dailyWeight > 0 && dailyAverage == null) dailyLabel,
+        if (ratingWeight > 0 && ratingScore == null) ratingLabel,
       ];
 
   bool get isComplete => missing.isEmpty;
@@ -117,12 +123,6 @@ class CalculationService {
   double get dailyWeight => store.weight('dailyExamsWeight', 20).toDouble();
   double get ratingWeight => store.weight('ratingWeight', 10).toDouble();
 
-  double get dailyExamInputMax {
-    final raw = store.settings['dailyExamInputMax'];
-    final value = raw is num ? raw.toDouble() : double.tryParse(raw?.toString() ?? '');
-    if (value == null || value <= 0) return 10;
-    return value.clamp(1, 100).toDouble();
-  }
 
   /// نسبة حضور الطالب (معلومة للمتابعة فقط، لا تدخل في السعي).
   double? attendanceRate(String studentId, String sectionId) {
@@ -147,20 +147,23 @@ class CalculationService {
     return null;
   }
 
-  /// درجات الامتحانات اليومية التي حضرها الطالب في الفصل.
+  /// نسب الامتحانات اليومية التي حضرها الطالب في الفصل (من 100)،
+  /// كل امتحان حسب درجته الكاملة، فتتوزع درجة اليومي على عدد الامتحانات بالتناسب.
   List<double> dailyScores(String studentId, String sectionId, int semester) {
-    final max = dailyExamInputMax;
-    final examIds = store.dailyExams
-        .where((e) => e.sectionId == sectionId && e.semester == semester)
-        .map((e) => e.id)
-        .toSet();
+    final maxOf = {
+      for (final e in store.dailyExams)
+        if (e.sectionId == sectionId && e.semester == semester) e.id: store.dailyMaxOf(e),
+    };
     return store.dailyScores
         .where((s) =>
-            examIds.contains(s.examId) &&
+            maxOf.containsKey(s.examId) &&
             s.studentId == studentId &&
             s.status == 'درجة' &&
             s.score != null)
-        .map((s) => s.score!.clamp(0, max).toDouble())
+        .map((s) {
+          final max = maxOf[s.examId]!;
+          return s.score!.clamp(0, max) / max * 100;
+        })
         .toList();
   }
 
@@ -174,7 +177,10 @@ class CalculationService {
       semester: semester,
       monthlyScores: monthly,
       dailyScores: dailyScores(studentId, sectionId, semester),
-      dailyMax: dailyExamInputMax,
+      dailyMax: 100,
+      monthlyLabel: store.componentLabel('monthly'),
+      dailyLabel: store.componentLabel('daily'),
+      ratingLabel: store.componentLabel('rating'),
       ratingScore: store.ratingOf(studentId, sectionId, semester),
       monthlyWeight: monthlyWeight,
       dailyWeight: dailyWeight,

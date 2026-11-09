@@ -123,7 +123,6 @@ class _ReportsPageState extends State<ReportsPage> {
     if (sectionId == null) return;
     final students = widget.store.studentsOf(sectionId!);
     final calc = CalculationService(widget.store);
-    final max = calc.dailyExamInputMax;
     final rows = <DataRow>[];
 
     for (var i = 0; i < students.length; i++) {
@@ -142,15 +141,15 @@ class _ReportsPageState extends State<ReportsPage> {
     showDialog(
       context: context,
       builder: (_) => _monitoringDialog(
-        title: 'الامتحانات اليومية والتقدير — ${Semesters.name(semester)}',
+        title: '${widget.store.componentLabel('daily')} و${widget.store.componentLabel('rating')} — ${Semesters.name(semester)}',
         columns: [
           const DataColumn(label: Text('ت')),
           const DataColumn(label: Text('اسم الطالب')),
           const DataColumn(label: Text('عدد الامتحانات')),
-          DataColumn(label: Text('المعدل /${n(max % 1 == 0 ? max.toInt() : max)}')),
-          DataColumn(label: Text('اليومي /${n(calc.dailyWeight.toInt())}')),
+          const DataColumn(label: Text('المعدل %')),
+          DataColumn(label: Text('${widget.store.componentLabel('daily')} /${n(calc.dailyWeight.toInt())}')),
           const DataColumn(label: Text('التقدير')),
-          DataColumn(label: Text('التقدير /${n(calc.ratingWeight.toInt())}')),
+          DataColumn(label: Text('${widget.store.componentLabel('rating')} /${n(calc.ratingWeight.toInt())}')),
         ],
         rows: rows,
       ),
@@ -190,8 +189,8 @@ class _ReportsPageState extends State<ReportsPage> {
           const DataColumn(label: Text('اسم الطالب')),
           for (final m in months) DataColumn(label: Text(m)),
           const DataColumn(label: Text('معدل الشهري')),
-          DataColumn(label: Text('الشهري /${n(calc.monthlyWeight.toInt())}')),
-          DataColumn(label: Text('اليومي /${n(calc.dailyWeight.toInt())}')),
+          DataColumn(label: Text('${widget.store.componentLabel('monthly')} /${n(calc.monthlyWeight.toInt())}')),
+          DataColumn(label: Text('${widget.store.componentLabel('daily')} /${n(calc.dailyWeight.toInt())}')),
           DataColumn(label: Text('التقدير /${n(calc.ratingWeight.toInt())}')),
           const DataColumn(label: Text('سعي الفصل /١٠٠')),
         ],

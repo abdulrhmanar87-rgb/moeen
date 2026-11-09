@@ -62,8 +62,9 @@ class _ResultsPageState extends State<ResultsPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: Text(
-                'سعي الفصل = الشهري ${calc.monthlyWeight.toInt()} + اليومي ${calc.dailyWeight.toInt()} '
-                '+ السلوك والمشاركة ${calc.ratingWeight.toInt()}',
+                'سعي الفصل = ${widget.store.componentLabel('monthly')} ${calc.monthlyWeight.toInt()} '
+                '+ ${widget.store.componentLabel('daily')} ${calc.dailyWeight.toInt()} '
+                '+ ${widget.store.componentLabel('rating')} ${calc.ratingWeight.toInt()}',
                 style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
                 textAlign: TextAlign.center,
               ),
@@ -103,9 +104,9 @@ class _ResultsPageState extends State<ResultsPage> {
         subtitle: Padding(
           padding: const EdgeInsetsDirectional.only(start: 30, top: 4),
           child: Wrap(spacing: 14, runSpacing: 4, children: [
-            _mini('الشهري', b.monthlyPart, b.monthlyWeight),
-            _mini('اليومي', b.dailyPart, b.dailyWeight),
-            _mini('التقدير', b.ratingPart, b.ratingWeight),
+            _mini(b.monthlyLabel, b.monthlyPart, b.monthlyWeight),
+            _mini(b.dailyLabel, b.dailyPart, b.dailyWeight),
+            _mini(b.ratingLabel, b.ratingPart, b.ratingWeight),
           ]),
         ),
         children: [_details(b)],
@@ -142,7 +143,7 @@ class _ResultsPageState extends State<ResultsPage> {
       const Divider(),
       // الامتحانات الشهرية
       _line(
-        'الامتحانات الشهرية',
+        b.monthlyLabel,
         b.monthlyScores.isEmpty
             ? 'لم تُدخل بعد'
             : '${Semesters.months(b.semester).map((m) => b.monthlyScores[m] == null ? '—' : _fmt(b.monthlyScores[m])).join(' ، ')}'
@@ -151,17 +152,17 @@ class _ResultsPageState extends State<ResultsPage> {
         b.monthlyWeight,
       ),
       _line(
-        'الامتحانات اليومية',
+        b.dailyLabel,
         b.dailyScores.isEmpty
             ? 'لا توجد درجات'
-            : '${b.dailyScores.map(_fmt).join(' ، ')}  ← المعدل ${_fmt(b.dailyAverage)} من ${_fmt(b.dailyMax)}',
+            : 'النسب: ${b.dailyScores.map((v) => '${_fmt(v)}%').join(' ، ')}  ← المعدل ${_fmt(b.dailyAverage)}%',
         b.dailyPart,
         b.dailyWeight,
       ),
       _line(
-        'السلوك والمشاركة',
+        b.ratingLabel,
         b.ratingScore == null
-            ? 'لم يُقيَّم بعد (من تبويب «التقدير» في الامتحانات)'
+            ? 'لم يُقيَّم بعد (من تبويب «${b.ratingLabel}» في الامتحانات)'
             : '${b.ratingScore} من 10، ${RatingLevels.label(b.ratingScore!)}',
         b.ratingPart,
         b.ratingWeight,

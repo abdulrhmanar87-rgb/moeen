@@ -27,6 +27,10 @@ class _SettingsPageState extends State<SettingsPage> {
         text: store.weight('ratingWeight', 10).toString(),
       ),
     };
+    const labelKeys = {'monthlyExamsWeight': 'monthly', 'dailyExamsWeight': 'daily', 'ratingWeight': 'rating'};
+    final labels = {
+      for (final e in labelKeys.entries) e.key: TextEditingController(text: store.componentLabel(e.value)),
+    };
 
     final result = await showDialog<bool>(
       context: context,
@@ -48,27 +52,48 @@ class _SettingsPageState extends State<SettingsPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
-                      'سعي الفصل من 100. حدد درجة كل عنصر، ويجب أن يكون المجموع 100.',
+                      'سعي الفصل من 100. سمِّ كل عنصر بما يناسب مادتك وحدد درجته، ويجب أن يكون المجموع 100. '
+                      'الامتحانات تُحسب بالتناسب: درجة العنصر تتوزع على عدد امتحاناته، '
+                      'والعنصر الثالث تقدير بالشريط المتحرك.',
+                      style: TextStyle(height: 1.6),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     for (final item in const [
-                      ('monthlyExamsWeight', 'معدل الامتحانات الشهرية'),
-                      ('dailyExamsWeight', 'معدل الامتحانات اليومية'),
-                      ('ratingWeight', 'تقدير السلوك والمشاركة'),
+                      ('monthlyExamsWeight', 'الامتحانات الشهرية', Icons.calendar_month_outlined),
+                      ('dailyExamsWeight', 'الامتحانات اليومية', Icons.edit_note_rounded),
+                      ('ratingWeight', 'التقدير (شريط)', Icons.tune_rounded),
                     ])
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: TextField(
-                          controller: controllers[item.$1],
-                          keyboardType: TextInputType.number,
-                          inputFormatters: const [EnglishDigitsFormatter()],
-                          decoration: InputDecoration(
-                            labelText: item.$2,
-                            suffixText: '/100',
-                            border: const OutlineInputBorder(),
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(children: [
+                          Icon(item.$3, size: 22, color: Colors.grey.shade600),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 3,
+                            child: TextField(
+                              controller: labels[item.$1],
+                              decoration: InputDecoration(
+                                labelText: 'اسم العنصر',
+                                hintText: item.$2,
+                                border: const OutlineInputBorder(),
+                              ),
+                            ),
                           ),
-                          onChanged: (_) => setDialogState(() {}),
-                        ),
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 96,
+                            child: TextField(
+                              controller: controllers[item.$1],
+                              keyboardType: TextInputType.number,
+                              inputFormatters: const [EnglishDigitsFormatter()],
+                              decoration: const InputDecoration(
+                                labelText: 'الدرجة',
+                                border: OutlineInputBorder(),
+                              ),
+                              onChanged: (_) => setDialogState(() {}),
+                            ),
+                          ),
+                        ]),
                       ),
                     Align(
                       alignment: Alignment.centerRight,
@@ -109,6 +134,14 @@ class _SettingsPageState extends State<SettingsPage> {
                       return;
                     }
                     store.settings.addAll(values);
+                    for (final e in labelKeys.entries) {
+                      final t = labels[e.key]!.text.trim();
+                      if (t.isEmpty || t == AppStore.componentDefaults[e.value]) {
+                        store.settings.remove('label_${e.value}');
+                      } else {
+                        store.settings['label_${e.value}'] = t;
+                      }
+                    }
                     await store.saveAll();
                     if (dialogContext.mounted) {
                       Navigator.pop(dialogContext, true);
@@ -123,89 +156,9 @@ class _SettingsPageState extends State<SettingsPage> {
       },
     );
 
-    for (final controller in controllers.values) {
+    for (final controller in [...controllers.values, ...labels.values]) {
       controller.dispose();
     }
-    if (result == true && mounted) setState(() {});
-  }
-
-  String _dailyExamInputMaxText(AppStore store) {
-    final raw = store.settings['dailyExamInputMax'];
-    final value = raw is num
-        ? raw.toDouble()
-        : double.tryParse(raw?.toString() ?? '');
-    final safe = (value == null || value <= 0 ? 10 : value).clamp(1, 100);
-    return safe % 1 == 0 ? safe.toInt().toString() : safe.toString();
-  }
-
-  Future<void> _editDailyExamInputMax() async {
-    final store = widget.store;
-    final controller = TextEditingController(
-      text: _dailyExamInputMaxText(store),
-    );
-    String? error;
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('نطاق درجة الامتحان اليومي'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'حدد الدرجة القصوى التي يسمح الأستاذ بإدخالها، مثل 10 أو 20 أو 5.',
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: const [EnglishDigitsFormatter()],
-                decoration: const InputDecoration(
-                  labelText: 'الدرجة القصوى',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (_) => setDialogState(() => error = null),
-              ),
-              if (error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    error!,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final value = ArabicNumbers.parseDouble(controller.text);
-                if (value == null || value <= 0 || value > 100) {
-                  setDialogState(() {
-                    error = 'أدخل قيمة أكبر من صفر ولا تتجاوز 100.';
-                  });
-                  return;
-                }
-                store.settings['dailyExamInputMax'] = value;
-                await store.saveAll();
-                if (dialogContext.mounted) {
-                  Navigator.pop(dialogContext, true);
-                }
-              },
-              child: const Text('حفظ'),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    controller.dispose();
     if (result == true && mounted) setState(() {});
   }
 
@@ -399,26 +352,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Text(
-                'الشهري ${store.weight('monthlyExamsWeight', 70)} + '
-                'اليومي ${store.weight('dailyExamsWeight', 20)} + '
-                'التقدير ${store.weight('ratingWeight', 10)} '
+                '${store.componentLabel('monthly')} ${store.weight('monthlyExamsWeight', 70)} + '
+                '${store.componentLabel('daily')} ${store.weight('dailyExamsWeight', 20)} + '
+                '${store.componentLabel('rating')} ${store.weight('ratingWeight', 10)} '
                 '= ${store.weight('monthlyExamsWeight', 70) + store.weight('dailyExamsWeight', 20) + store.weight('ratingWeight', 10)}',
               ),
               trailing: const Icon(Icons.chevron_left),
               onTap: _editDailyWeights,
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.score_outlined),
-              title: const Text(
-                'نطاق درجة الامتحان اليومي',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                'الدرجة القصوى للإدخال: ${_dailyExamInputMaxText(store)}',
-              ),
-              trailing: const Icon(Icons.chevron_left),
-              onTap: _editDailyExamInputMax,
             ),
             const Divider(),
             ListTile(

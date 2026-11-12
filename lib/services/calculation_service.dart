@@ -169,9 +169,9 @@ class CalculationService {
 
   SemesterBreakdown semester(String studentId, String sectionId, int semester) {
     final monthly = <String, double>{};
-    for (final period in Semesters.months(semester)) {
-      final score = monthlyExam(studentId, sectionId, period);
-      if (score != null) monthly[period] = score;
+    for (final def in store.monthlyExamsOf(sectionId, semester)) {
+      final score = monthlyExam(studentId, sectionId, def.key);
+      if (score != null) monthly[def.key] = score;
     }
     return SemesterBreakdown(
       semester: semester,

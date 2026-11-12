@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import 'kv_store.dart';
+import '../constants/semesters.dart';
 import '../../models/school.dart';
 import '../../models/student.dart';
 import '../../models/academic.dart';
@@ -91,6 +92,61 @@ class AppStore {
 
   /// الدرجة الكاملة المقترحة لامتحان يومي جديد: نفس آخر امتحان أُنشئ.
   double get lastDailyMax => dailyExams.isEmpty ? legacyDailyMax : dailyMaxOf(dailyExams.last);
+
+  // ---------------------------------------------------------------------------
+  // الامتحانات الشهرية: عددها غير محدد، يضيفها المدرس لكل شعبة وفصل.
+  // الدرجات تُحفظ في monthlyScores بمفتاح الامتحان (period).
+
+  List<MonthlyExamDef> monthlyExamsOf(String sectionId, int semester) =>
+      _monthlyDefs(sectionId).where((d) => d.semester == semester).toList();
+
+  /// القائمة المحفوظة، أو (للبيانات القديمة) الأشهر الثابتة التي لها درجات.
+  List<MonthlyExamDef> _monthlyDefs(String sectionId) {
+    final all = settings['monthlyExams'];
+    if (all is Map && all[sectionId] is List) {
+      return [
+        for (final x in all[sectionId] as List)
+          if (x is Map) MonthlyExamDef.fromJson(Map<String, dynamic>.from(x)),
+      ];
+    }
+    final used = {for (final m in monthlyScores) if (m.sectionId == sectionId) m.period};
+    return [
+      for (final sem in const [1, 2])
+        for (final name in Semesters.months(sem))
+          if (used.contains(name)) MonthlyExamDef(key: name, name: name, semester: sem),
+    ];
+  }
+
+  Future<void> _saveMonthlyDefs(String sectionId, List<MonthlyExamDef> defs) async {
+    final all = settings['monthlyExams'] is Map
+        ? Map<String, dynamic>.from(settings['monthlyExams'] as Map)
+        : <String, dynamic>{};
+    all[sectionId] = [for (final d in defs) d.toJson()];
+    settings['monthlyExams'] = all;
+    await saveAll();
+  }
+
+  Future<MonthlyExamDef> addMonthlyExam(String sectionId, int semester, String name) async {
+    final defs = _monthlyDefs(sectionId);
+    final def = MonthlyExamDef(key: 'm_${id()}', name: name, semester: semester);
+    defs.add(def);
+    await _saveMonthlyDefs(sectionId, defs);
+    return def;
+  }
+
+  Future<void> renameMonthlyExam(String sectionId, String key, String name) async {
+    final defs = _monthlyDefs(sectionId);
+    for (final d in defs) {
+      if (d.key == key) d.name = name;
+    }
+    await _saveMonthlyDefs(sectionId, defs);
+  }
+
+  Future<void> deleteMonthlyExam(String sectionId, String key) async {
+    final defs = _monthlyDefs(sectionId)..removeWhere((d) => d.key == key);
+    monthlyScores.removeWhere((m) => m.sectionId == sectionId && m.period == key);
+    await _saveMonthlyDefs(sectionId, defs);
+  }
 
   int weight(String key, int fallback) {
     final value = settings[key];
@@ -652,4 +708,20 @@ class BackupSummary {
   final int students;
   final int scores;
   final int attendance;
+}
+
+/// امتحان شهري: مفتاحه ثابت (تُربط به الدرجات) واسمه قابل للتعديل.
+class MonthlyExamDef {
+  MonthlyExamDef({required this.key, required this.name, required this.semester});
+  final String key;
+  String name;
+  final int semester;
+
+  Map<String, dynamic> toJson() => {'key': key, 'name': name, 'semester': semester};
+
+  factory MonthlyExamDef.fromJson(Map<String, dynamic> j) => MonthlyExamDef(
+        key: (j['key'] ?? '').toString(),
+        name: (j['name'] ?? '').toString(),
+        semester: j['semester'] == 2 ? 2 : 1,
+      );
 }

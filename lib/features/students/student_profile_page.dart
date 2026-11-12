@@ -215,11 +215,13 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
       ),
       [
         Text(b.monthlyLabel, style: TextStyle(fontWeight: FontWeight.w800, color: Colors.grey.shade800)),
-        for (final m in Semesters.months(b.semester))
+        for (final def in store.monthlyExamsOf(sid, b.semester))
           _line(
-            m,
-            b.monthlyScores[m] != null ? _fmt(b.monthlyScores[m]) : (monthStatus[m] == 'مؤجل' ? 'مؤجل' : '—'),
-            color: monthStatus[m] == 'مؤجل' ? _amber : _scoreColor(b.monthlyScores[m]),
+            def.name,
+            b.monthlyScores[def.key] != null
+                ? _fmt(b.monthlyScores[def.key])
+                : (monthStatus[def.key] == 'مؤجل' ? 'مؤجل' : '—'),
+            color: monthStatus[def.key] == 'مؤجل' ? _amber : _scoreColor(b.monthlyScores[def.key]),
           ),
         const Divider(height: 18),
         Text(b.dailyLabel,

@@ -71,9 +71,9 @@ class _SaeeBookPageState extends State<SaeeBookPage> {
           if (x.status == 'غائب') return 'غ';
           return x.status == 'درجة' ? _fmt(x.score) : '';
         }),
-      for (final m in Semesters.months(semester))
-        _Col(m, 'من 100', 1, (st) {
-          final x = monthly[m]?[st];
+      for (final def in store.monthlyExamsOf(sid, semester))
+        _Col(def.name, 'من 100', 1, (st) {
+          final x = monthly[def.key]?[st];
           if (x == null) return '';
           if (x.score != null) return _fmt(x.score);
           return x.status == 'مؤجل' ? 'م' : '';

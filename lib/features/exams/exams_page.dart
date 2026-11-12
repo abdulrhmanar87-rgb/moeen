@@ -255,7 +255,7 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
   Widget _monthly() {
     final store = widget.store;
     final students = sectionId == null ? [] : store.studentsOf(sectionId!);
-    final periods = Semesters.months(semester);
+    final periods = sectionId == null ? <MonthlyExamDef>[] : store.monthlyExamsOf(sectionId!, semester);
     int entered(String period, {bool midyear = false}) => midyear
         ? store.midyearScores.where((x) => x.sectionId == sectionId && x.score != null).length
         : store.monthlyScores
@@ -264,19 +264,44 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
     return ListView(
       padding: const EdgeInsets.all(14),
       children: [
-        Text('${store.componentLabel('monthly')} — ${Semesters.name(semester)} (من 100)',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Row(children: [
+          Expanded(
+            child: Text('${store.componentLabel('monthly')} — ${Semesters.name(semester)} (من 100)',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ),
+          FilledButton.icon(
+            onPressed: sectionId == null ? null : _newMonthlyExam,
+            icon: const Icon(Icons.add),
+            label: const Text('امتحان شهري جديد'),
+          ),
+        ]),
         const SizedBox(height: 10),
-        for (final period in periods)
+        if (periods.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Text('لا توجد امتحانات شهرية في ${Semesters.name(semester)} بعد. أضف ما تحتاجه منها، فعددها غير محدد.',
+                style: TextStyle(color: Colors.grey.shade700, height: 1.6)),
+          ),
+        for (final def in periods)
           Card(
             child: ListTile(
-              onTap: sectionId == null ? null : () => _enterMonthly(period),
-              title: Text(period),
-              subtitle: Text('${entered(period)} من ${students.length} طالب'),
-              trailing: FilledButton(
-                onPressed: sectionId == null ? null : () => _enterMonthly(period),
-                child: const Text('إدخال'),
-              ),
+              onTap: () => _enterMonthly(def.key, title: def.name),
+              title: Text(def.name),
+              subtitle: Text('${entered(def.key)} من ${students.length} طالب'),
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                PopupMenuButton<String>(
+                  tooltip: 'خيارات',
+                  onSelected: (v) => v == 'rename' ? _renameMonthlyExam(def) : _deleteMonthlyExam(def),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'rename', child: Text('تعديل الاسم')),
+                    PopupMenuItem(value: 'delete', child: Text('حذف الامتحان ودرجاته')),
+                  ],
+                ),
+                FilledButton(
+                  onPressed: () => _enterMonthly(def.key, title: def.name),
+                  child: const Text('إدخال'),
+                ),
+              ]),
             ),
           ),
         const SizedBox(height: 18),
@@ -506,7 +531,76 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
     if (mounted) setState(() {});
   }
 
-  Future<void> _enterMonthly(String period, {bool midyear = false, Set<String>? onlyStudentIds}) async {
+  Future<String?> _askName(String title, String initial, String action) async {
+    final c = TextEditingController(text: initial);
+    c.selection = TextSelection(baseOffset: 0, extentOffset: c.text.length);
+    return showDialog<String>(
+      context: context,
+      builder: (dc) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text(title),
+          content: TextField(
+            controller: c,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'اسم الامتحان'),
+            onSubmitted: (v) => Navigator.pop(dc, v.trim().isEmpty ? initial : v.trim()),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dc), child: const Text('إلغاء')),
+            FilledButton(
+              onPressed: () => Navigator.pop(dc, c.text.trim().isEmpty ? initial : c.text.trim()),
+              child: Text(action),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _newMonthlyExam() async {
+    final store = widget.store;
+    final n = store.monthlyExamsOf(sectionId!, semester).length + 1;
+    final name = await _askName('امتحان شهري جديد، ${Semesters.name(semester)}', 'الشهري $n', 'إنشاء وإدخال الدرجات');
+    if (name == null || !mounted) return;
+    final def = await store.addMonthlyExam(sectionId!, semester, name);
+    if (!mounted) return;
+    setState(() {});
+    await _enterMonthly(def.key, title: def.name);
+  }
+
+  Future<void> _renameMonthlyExam(MonthlyExamDef def) async {
+    final name = await _askName('تعديل اسم الامتحان', def.name, 'حفظ');
+    if (name == null || name == def.name) return;
+    await widget.store.renameMonthlyExam(sectionId!, def.key, name);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _deleteMonthlyExam(MonthlyExamDef def) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dc) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('حذف «${def.name}»؟'),
+          content: const Text('تُحذف درجات كل الطلاب في هذا الامتحان، ويُعاد حساب السعي بدونه.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dc, false), child: const Text('إلغاء')),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.pop(dc, true),
+              child: const Text('حذف'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    await widget.store.deleteMonthlyExam(sectionId!, def.key);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _enterMonthly(String period, {bool midyear = false, Set<String>? onlyStudentIds, String? title}) async {
     final store = widget.store;
     final sid = sectionId!;
     final students = store
@@ -536,7 +630,7 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
       context,
       MaterialPageRoute(
         builder: (_) => GradeEntryPage(
-          title: period,
+          title: title ?? period,
           subtitle: midyear || period == Semesters.finalExam || period == Semesters.completionExam
               ? ''
               : Semesters.name(semester),

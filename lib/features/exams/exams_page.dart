@@ -123,10 +123,17 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
                       onTap: () => _enterDaily(exams[i]),
                       title: Text(exams[i].title),
                       subtitle: Text('من ${_maxText(widget.store.dailyMaxOf(exams[i]))} • ${exams[i].date} • ${_enteredCount(exams[i].id)} درجة مدخلة'),
-                      trailing: FilledButton(
-                        onPressed: () => _enterDaily(exams[i]),
-                        child: const Text('الدرجات'),
-                      ),
+                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                        IconButton(
+                          tooltip: 'حذف الامتحان',
+                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                          onPressed: () => _deleteDailyExam(exams[i]),
+                        ),
+                        FilledButton(
+                          onPressed: () => _enterDaily(exams[i]),
+                          child: const Text('الدرجات'),
+                        ),
+                      ]),
                     ),
                   ),
                 ),
@@ -196,6 +203,42 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
     if (!mounted) return;
     setState(() {});
     if (exam != null) await _enterDaily(exam);
+  }
+
+  Future<void> _deleteDailyExam(DailyExam exam) async {
+    final store = widget.store;
+    final count = _enteredCount(exam.id);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dc) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          icon: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 36),
+          title: Text('حذف «${exam.title.isEmpty ? exam.date : exam.title}»؟'),
+          content: Text(
+            count == 0
+                ? 'لا توجد درجات مدخلة في هذا الامتحان.'
+                : 'ستُحذف درجات $count طالب في هذا الامتحان نهائياً، ويُعاد حساب السعي بدونه. لا يمكن التراجع عن الحذف.',
+            style: const TextStyle(height: 1.6),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dc, false), child: const Text('إلغاء')),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.pop(dc, true),
+              child: const Text('حذف'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    store.dailyExams.removeWhere((e) => e.id == exam.id);
+    store.dailyScores.removeWhere((x) => x.examId == exam.id);
+    await store.saveAll();
+    if (!mounted) return;
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('حُذف ${exam.title}')));
   }
 
   Future<void> _enterDaily(DailyExam exam) async {

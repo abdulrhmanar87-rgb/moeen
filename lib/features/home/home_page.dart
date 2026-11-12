@@ -10,7 +10,7 @@ import '../attendance/attendance_page.dart';
 import '../exams/exams_page.dart';
 import '../reports/reports_page.dart';
 import '../setup/setup_page.dart';
-import '../results/results_page.dart';
+import '../results/saee_book_page.dart';
 import '../settings/settings_page.dart';
 import '../settings/backup_actions.dart';
 import '../exchange/teacher_exchange_page.dart';
@@ -427,8 +427,9 @@ class _HomePageState extends State<HomePage> {
           AttendancePage(store: store, initialSectionId: section?.id)),
       (Icons.edit_note_rounded, 'الامتحانات والتقدير', 'اليومي، الشهري، نصف السنة، والسلوك والمشاركة',
           ExamsPage(store: store, initialSectionId: section?.id)),
-      (Icons.calculate_outlined, 'النتائج', 'سعي الفصل لكل طالب وتفصيل حسابه', ResultsPage(store: store)),
-      (Icons.print_outlined, 'التقارير وسجل المدرس', 'متابعة الشعبة وطباعة السجل على A4', ReportsPage(store: store)),
+      (Icons.table_chart_outlined, 'دفتر السعي', 'درجات اليومي والشهري والتقدير أمام كل طالب، مع الطباعة',
+          SaeeBookPage(store: store, initialSectionId: section?.id)),
+      (Icons.menu_book_outlined, 'سجل المدرس النهائي', 'طباعة سجل المدرس على ورق A4', ReportsPage(store: store)),
       (Icons.class_outlined, 'الصفوف والشعب', 'الصفوف والشعب وبيانات المدرسة', SetupPage(store: store)),
     ];
     return Material(

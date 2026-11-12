@@ -4,6 +4,7 @@ import '../../core/constants/semesters.dart';
 import '../../core/print/print_bridge.dart';
 import '../../core/storage/app_store.dart';
 import '../../core/utils/arabic_numbers.dart';
+import '../../models/academic.dart';
 import '../../services/calculation_service.dart';
 import 'teacher_record_print.dart';
 
@@ -29,210 +30,89 @@ class _ReportsPageState extends State<ReportsPage> {
   Widget build(BuildContext context) {
     final store = widget.store;
     sectionId ??= store.currentSectionId;
+    final students = sectionId == null ? const [] : store.studentsOf(sectionId!);
+    Section? section;
+    for (final s in store.sections) {
+      if (s.id == sectionId) section = s;
+    }
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(title: const Text('التقارير')),
-        body: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (store.sections.isNotEmpty)
-              DropdownButtonFormField<String>(
-                initialValue: sectionId,
-                decoration: const InputDecoration(
-                  labelText: 'الشعبة',
-                  prefixIcon: Icon(Icons.class_outlined),
-                ),
-                items: store.sections
-                    .map(
-                      (s) => DropdownMenuItem(
-                        value: s.id,
-                        child: Text('${s.gradeName} - ${s.name}'),
+        appBar: AppBar(title: const Text('سجل المدرس النهائي')),
+        body: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (store.sections.length > 1) ...[
+                  DropdownButtonFormField<String>(
+                    initialValue: sectionId,
+                    decoration: const InputDecoration(labelText: 'الشعبة', prefixIcon: Icon(Icons.class_outlined)),
+                    items: [
+                      for (final s in store.sections)
+                        DropdownMenuItem(value: s.id, child: Text('${s.gradeName} - ${s.name}')),
+                    ],
+                    onChanged: (v) {
+                      setState(() => sectionId = v);
+                      store.setCurrentSection(v);
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                ],
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      Row(children: [
+                        const Icon(Icons.menu_book_outlined, size: 30),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            section == null ? 'سجل المدرس' : 'سجل المدرس: ${section.gradeName} ${section.name}',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                      ]),
+                      const SizedBox(height: 8),
+                      Text(
+                        'معدل الفصلين ونصف السنة والسعي السنوي والنهائي والإكمال لكل طالب، '
+                        'يتحدث تلقائياً خلال السنة ويُطبع على ورق A4 (${students.length} طالب).',
+                        style: TextStyle(color: Colors.grey.shade700, height: 1.6),
                       ),
-                    )
-                    .toList(),
-                onChanged: (v) {
-                  setState(() => sectionId = v);
-                  store.setCurrentSection(v);
-                },
-              ),
-            const SizedBox(height: 12),
-            SegmentedButton<int>(
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(value: 1, label: Text('الفصل الأول')),
-                ButtonSegment(value: 2, label: Text('الفصل الثاني')),
+                      const SizedBox(height: 14),
+                      Row(children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: section == null || students.isEmpty
+                                ? null
+                                : () => _printTeacherRecord(section!, students),
+                            icon: const Icon(Icons.print_rounded),
+                            label: const Text('طباعة / حفظ PDF'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: section == null || students.isEmpty ? null : _showTeacherRecord,
+                            icon: const Icon(Icons.visibility_outlined),
+                            label: const Text('معاينة'),
+                          ),
+                        ),
+                      ]),
+                    ]),
+                  ),
+                ),
               ],
-              selected: {semester},
-              onSelectionChanged: (v) => setState(() => semester = v.first),
-            ),
-            const SizedBox(height: 16),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.menu_book_outlined),
-                title: const Text(
-                  'سجل المدرس',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: const Text(
-                  'سجل دراسي موحد يتحدث تلقائياً خلال السنة ويُجهّز للطباعة على ورق A4',
-                ),
-                trailing: const Icon(Icons.chevron_left),
-                onTap: _showTeacherRecord,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.edit_note_rounded),
-                title: const Text(
-                  'متابعة الامتحانات اليومية والتقدير',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: const Text(
-                  'معدل الامتحانات اليومية ودرجتها، وتقدير السلوك والمشاركة للفصل المختار',
-                ),
-                trailing: const Icon(Icons.chevron_left),
-                onTap: _showDailyMonitoring,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.calendar_month_rounded),
-                title: const Text(
-                  'متابعة سعي الفصل',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: const Text(
-                  'درجات الامتحانات الشهرية وتوزيع سعي الفصل لكل طالب',
-                ),
-                trailing: const Icon(Icons.chevron_left),
-                onTap: _showMonthlyMonitoring,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-
-  void _showDailyMonitoring() {
-    if (sectionId == null) return;
-    final students = widget.store.studentsOf(sectionId!);
-    final calc = CalculationService(widget.store);
-    final rows = <DataRow>[];
-
-    for (var i = 0; i < students.length; i++) {
-      final b = calc.semester(students[i].id, sectionId!, semester);
-      rows.add(DataRow(cells: [
-        DataCell(Text(n(i + 1))),
-        DataCell(Text(students[i].name)),
-        DataCell(Text(n(b.dailyScores.length))),
-        DataCell(Text(_fmt(b.dailyAverage))),
-        DataCell(Text(_fmt(b.dailyPart))),
-        DataCell(Text(b.ratingScore == null ? '—' : '${n(b.ratingScore)} ${RatingLevels.label(b.ratingScore!)}')),
-        DataCell(Text(_fmt(b.ratingPart))),
-      ]));
-    }
-
-    showDialog(
-      context: context,
-      builder: (_) => _monitoringDialog(
-        title: '${widget.store.componentLabel('daily')} و${widget.store.componentLabel('rating')} — ${Semesters.name(semester)}',
-        columns: [
-          const DataColumn(label: Text('ت')),
-          const DataColumn(label: Text('اسم الطالب')),
-          const DataColumn(label: Text('عدد الامتحانات')),
-          const DataColumn(label: Text('المعدل %')),
-          DataColumn(label: Text('${widget.store.componentLabel('daily')} /${n(calc.dailyWeight.toInt())}')),
-          const DataColumn(label: Text('التقدير')),
-          DataColumn(label: Text('${widget.store.componentLabel('rating')} /${n(calc.ratingWeight.toInt())}')),
-        ],
-        rows: rows,
-      ),
-    );
-  }
-
-  void _showMonthlyMonitoring() {
-    if (sectionId == null) return;
-    final students = widget.store.studentsOf(sectionId!);
-    final calc = CalculationService(widget.store);
-    final months = Semesters.months(semester);
-    final rows = <DataRow>[];
-
-    for (var i = 0; i < students.length; i++) {
-      final b = calc.semester(students[i].id, sectionId!, semester);
-      rows.add(DataRow(cells: [
-        DataCell(Text(n(i + 1))),
-        DataCell(Text(students[i].name)),
-        for (final m in months) DataCell(Text(_fmt(b.monthlyScores[m]))),
-        DataCell(Text(_fmt(b.monthlyAverage))),
-        DataCell(Text(_fmt(b.monthlyPart))),
-        DataCell(Text(_fmt(b.dailyPart))),
-        DataCell(Text(_fmt(b.ratingPart))),
-        DataCell(Text(
-          b.total != null ? _fmt(b.total) : 'ناقص',
-          style: TextStyle(fontWeight: FontWeight.bold, color: b.total == null ? Colors.orange.shade800 : null),
-        )),
-      ]));
-    }
-
-    showDialog(
-      context: context,
-      builder: (_) => _monitoringDialog(
-        title: 'سعي ${Semesters.name(semester)}',
-        columns: [
-          const DataColumn(label: Text('ت')),
-          const DataColumn(label: Text('اسم الطالب')),
-          for (final m in months) DataColumn(label: Text(m)),
-          const DataColumn(label: Text('معدل الشهري')),
-          DataColumn(label: Text('${widget.store.componentLabel('monthly')} /${n(calc.monthlyWeight.toInt())}')),
-          DataColumn(label: Text('${widget.store.componentLabel('daily')} /${n(calc.dailyWeight.toInt())}')),
-          DataColumn(label: Text('التقدير /${n(calc.ratingWeight.toInt())}')),
-          const DataColumn(label: Text('سعي الفصل /١٠٠')),
-        ],
-        rows: rows,
-      ),
-    );
-  }
-
-  AlertDialog _monitoringDialog({
-    required String title,
-    required List<DataColumn> columns,
-    required List<DataRow> rows,
-  }) {
-    return AlertDialog(
-      title: Row(
-        children: [
-          const Icon(Icons.assessment_outlined),
-          const SizedBox(width: 8),
-          Expanded(child: Text(title)),
-        ],
-      ),
-      content: SizedBox(
-        width: 980,
-        child: SingleChildScrollView(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columnSpacing: 20,
-              columns: columns,
-              rows: rows,
             ),
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('إغلاق'),
-        ),
-      ],
     );
   }
+
 
   void _showTeacherRecord() {
     if (sectionId == null) return;

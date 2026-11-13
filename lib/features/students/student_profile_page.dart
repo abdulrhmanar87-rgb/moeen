@@ -209,7 +209,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
-          total == null ? 'السعي غير مكتمل' : 'السعي ${_fmt(total)}',
+          total == null ? (b.notStarted ? 'لم يبدأ بعد' : 'السعي ناقص (مؤجل)') : 'السعي ${_fmt(total)}',
           style: TextStyle(fontWeight: FontWeight.w900, color: total == null ? Colors.grey.shade700 : _scoreColor(total)),
         ),
       ),
@@ -241,12 +241,12 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
         _line('${b.monthlyLabel} (من ${_fmt(b.monthlyWeight)})', _fmt(b.monthlyPart)),
         _line('${b.dailyLabel} (من ${_fmt(b.dailyWeight)})', _fmt(b.dailyPart)),
         _line('${b.ratingLabel} (من ${_fmt(b.ratingWeight)})', _fmt(b.ratingPart)),
-        if (total == null && b.partialTotal > 0)
-          _line('المجموع حتى الآن', _fmt(b.partialTotal), bold: true),
+        if (total == null && !b.notStarted)
+          _line('المجموع بدون المؤجل', _fmt(b.partialTotal), bold: true),
         if (b.missing.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: Text('ينقص: ${b.missing.join('، ')}', style: const TextStyle(color: _amber, fontSize: 12.5)),
+            child: Text('مؤجل: ${b.missing.join('، ')} — يكتمل السعي بعد إدخاله', style: const TextStyle(color: _amber, fontSize: 12.5)),
           ),
       ],
     );

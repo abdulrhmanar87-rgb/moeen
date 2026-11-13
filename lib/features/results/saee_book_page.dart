@@ -8,6 +8,7 @@ import '../../core/utils/arabic_numbers.dart';
 import '../../models/academic.dart';
 import '../../models/assessment.dart';
 import '../../models/student.dart';
+import '../../services/calculation_service.dart';
 
 /// دفتر السعي: قائمة الطلاب وأمام كل اسم درجاته المدخلة في الفصل أفقياً
 /// (اليومية ثم الشهرية ثم التقدير)، مع طباعة على ورق A4 بالعرض.
@@ -53,6 +54,7 @@ class _SaeeBookPageState extends State<SaeeBookPage> {
   }
 
   List<_Col> _columns(String sid) {
+    final calc = CalculationService(store);
     final exams = store.dailyExams.where((e) => e.sectionId == sid && e.semester == semester).toList()
       ..sort((a, b) => a.date.compareTo(b.date));
     final daily = <String, Map<String, DailyExamScore>>{};
@@ -81,6 +83,13 @@ class _SaeeBookPageState extends State<SaeeBookPage> {
       _Col(store.componentLabel('rating'), 'من 10', 2, (st) {
         final r = store.ratingOf(st, sid, semester);
         return r == null ? '' : '$r';
+      }),
+      // السعي: ما لم يُدخل = 0، والمؤجل يجعله «ناقص».
+      _Col('السعي', 'من 100', 3, (st) {
+        final b = calc.semester(st, sid, semester);
+        if (b.notStarted) return '';
+        final t = b.total;
+        return t == null ? 'ناقص' : _fmt(t);
       }),
     ];
   }
@@ -152,7 +161,7 @@ class _SaeeBookPageState extends State<SaeeBookPage> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
-            child: Text('غ: غائب عن الامتحان اليومي · م: مؤجل في الامتحان الشهري · الخانة الفارغة: لم تُدخل بعد',
+            child: Text('الخانة الفارغة تُحسب صفراً في السعي · غ: غائب عن اليومي (يُستبعد) · م: مؤجل في الشهري (السعي ناقص حتى يُدخل)',
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
           ),
         ]),
@@ -161,7 +170,12 @@ class _SaeeBookPageState extends State<SaeeBookPage> {
   }
 
   Widget _table(MoeenPalette p, List<Student> students, List<_Col> cols) {
-    Color groupColor(int g) => g == 0 ? p.soft : (g == 1 ? const Color(0xFFE8F1FB) : const Color(0xFFFBF3E2));
+    Color groupColor(int g) => switch (g) {
+          0 => p.soft,
+          1 => const Color(0xFFE8F1FB),
+          2 => const Color(0xFFFBF3E2),
+          _ => const Color(0xFFE3F3EA),
+        };
     final border = BorderSide(color: p.border);
 
     Widget headCell(_Col c) => Container(
@@ -183,21 +197,24 @@ class _SaeeBookPageState extends State<SaeeBookPage> {
       final n = double.tryParse(v);
       final max = c.group == 0
           ? double.tryParse(c.sub.replaceAll('من ', '')) ?? 10
-          : (c.group == 1 ? 100.0 : 10.0);
+          : (c.group == 2 ? 10.0 : 100.0);
+      final total = c.group == 3;
       final low = n != null && n < max / 2;
       return Container(
         width: _cellW,
         height: _rowH,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: odd ? const Color(0xFFFAF9FD) : Colors.white,
+          color: total ? const Color(0xFFF1F9F4) : (odd ? const Color(0xFFFAF9FD) : Colors.white),
           border: Border(left: border, bottom: border),
         ),
         child: Text(v,
             style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: v == 'غ' || v == 'م' ? const Color(0xFFD9822B) : (low ? const Color(0xFFD64545) : const Color(0xFF222222)),
+              fontSize: total && v != 'ناقص' ? 16.5 : (v == 'ناقص' ? 13 : 15),
+              fontWeight: total ? FontWeight.w900 : FontWeight.w800,
+              color: v == 'غ' || v == 'م' || v == 'ناقص'
+                  ? const Color(0xFFD9822B)
+                  : (low ? const Color(0xFFD64545) : const Color(0xFF222222)),
             )),
       );
     }
@@ -274,6 +291,7 @@ class _SaeeBookPageState extends State<SaeeBookPage> {
         (store.componentLabel('daily'), cols.where((c) => c.group == 0).length),
         (store.componentLabel('monthly'), cols.where((c) => c.group == 1).length),
         ('', 1),
+        ('', 1),
       ],
       columns: [for (final c in cols) (c.title, c.sub)],
       rows: [
@@ -311,18 +329,20 @@ String buildSaeeBookHtml({
   String ar(String v) => esc(ArabicNumbers.toArabic(v));
 
   final groupRow = StringBuffer();
-  for (var g = 0; g < groups.length; g++) {
-    final (label, n) = groups[g];
-    if (n == 0) continue;
-    if (g == groups.length - 1) {
-      groupRow.write('<th rowspan="2" class="v">${esc(columns.last.$1)}<small>${ar(columns.last.$2)}</small></th>');
-    } else {
-      groupRow.write('<th colspan="$n" class="grp">${esc(label)}</th>');
-    }
-  }
   final subRow = StringBuffer();
-  for (var c = 0; c < columns.length - 1; c++) {
-    subRow.write('<th class="v">${esc(columns[c].$1)}<small>${ar(columns[c].$2)}</small></th>');
+  var col = 0;
+  for (final (label, n) in groups) {
+    if (label.isEmpty) {
+      // عمود منفرد (التقدير، السعي) يمتد على صفّي العناوين.
+      for (var k = 0; k < n; k++, col++) {
+        groupRow.write('<th rowspan="2" class="v">${esc(columns[col].$1)}<small>${ar(columns[col].$2)}</small></th>');
+      }
+    } else if (n > 0) {
+      groupRow.write('<th colspan="$n" class="grp">${esc(label)}</th>');
+      for (var k = 0; k < n; k++, col++) {
+        subRow.write('<th class="v">${esc(columns[col].$1)}<small>${ar(columns[col].$2)}</small></th>');
+      }
+    }
   }
 
   final pages = <String>[];
@@ -358,7 +378,7 @@ String buildSaeeBookHtml({
     </thead>
     <tbody>$body</tbody>
   </table>
-  <footer>غ: غائب · م: مؤجل</footer>
+  <footer>غ: غائب (يُستبعد) · م: مؤجل (السعي ناقص حتى يُدخل) · الخانة الفارغة تُحسب صفراً</footer>
 </section>''');
   }
 
@@ -390,6 +410,7 @@ String buildSaeeBookHtml({
   .nameh { width: 58mm; }
   td { height: 7.6mm; font-size: 11pt; }
   td.name { text-align: right; white-space: nowrap; font-size: 10.5pt; }
+  tbody td:last-child { font-weight: bold; background: #f2f2f2; }
   footer { font-size: 8.5pt; margin-top: 2mm; }
   .toolbar { display: none; }
   @media screen {

@@ -1,6 +1,7 @@
 import '../core/constants/semesters.dart';
 import '../core/utils/grade_utils.dart';
 import '../core/storage/app_store.dart';
+import '../models/assessment.dart';
 
 /// تفاصيل سعي الطالب في فصل دراسي واحد (من 100):
 ///   معدل الامتحانات الشهرية للفصل  → من [monthlyWeight] (افتراضياً 70)
@@ -21,17 +22,27 @@ class SemesterBreakdown {
     this.monthlyLabel = 'الامتحانات الشهرية',
     this.dailyLabel = 'الامتحانات اليومية',
     this.ratingLabel = 'السلوك والمشاركة',
+    this.postponed = const [],
+    this.examCount = 1,
   });
 
+  /// عدد امتحانات الفصل (شهري + يومي) في الشعبة. فصل بلا امتحانات ولا تقدير
+  /// لم يبدأ بعد، فلا يُحسب صفراً (حتى لا يظهر الفصل الثاني 0 في سجل المدرس).
+  final int examCount;
+  bool get notStarted => examCount == 0 && ratingScore == null;
+
   final int semester;
+
+  /// أسماء الامتحانات الشهرية المؤجلة لهذا الطالب: سعيه ناقص حتى تُدخل.
+  final List<String> postponed;
   final String monthlyLabel;
   final String dailyLabel;
   final String ratingLabel;
 
-  /// درجات الامتحانات الشهرية المدخلة (من 100) لكل شهر من أشهر الفصل.
+  /// درجات الامتحانات الشهرية (من 100)؛ غير المدخل = 0، والمؤجل لا يدخل هنا.
   final Map<String, double> monthlyScores;
 
-  /// نسب الامتحانات اليومية التي حضرها الطالب (من [dailyMax] = 100).
+  /// نسب الامتحانات اليومية (من 100)؛ غير المدخل = 0، والغائب مستبعد.
   final List<double> dailyScores;
   final double dailyMax;
 
@@ -42,12 +53,14 @@ class SemesterBreakdown {
   final double dailyWeight;
   final double ratingWeight;
 
+  // قاعدة الحساب: ما لم يُدخل يُحسب 0، فالسعي يظهر دائماً،
+  // إلا إذا كان للطالب امتحان شهري «مؤجل» فيبقى سعيه ناقصاً.
   double? get monthlyAverage => monthlyScores.isEmpty
-      ? null
+      ? 0
       : monthlyScores.values.reduce((a, b) => a + b) / monthlyScores.length;
 
   double? get dailyAverage => dailyScores.isEmpty
-      ? null
+      ? 0
       : dailyScores.reduce((a, b) => a + b) / dailyScores.length;
 
   double? get monthlyPart =>
@@ -56,15 +69,10 @@ class SemesterBreakdown {
   double? get dailyPart =>
       dailyAverage == null ? null : GradeUtils.clamp(dailyAverage! * dailyWeight / dailyMax, 0, dailyWeight);
 
-  double? get ratingPart =>
-      ratingScore == null ? null : RatingLevels.fraction(ratingScore!) * ratingWeight;
+  double? get ratingPart => RatingLevels.fraction(ratingScore ?? 0) * ratingWeight;
 
-  /// العناصر الناقصة لاكتمال سعي الفصل.
-  List<String> get missing => [
-        if (monthlyWeight > 0 && monthlyAverage == null) monthlyLabel,
-        if (dailyWeight > 0 && dailyAverage == null) dailyLabel,
-        if (ratingWeight > 0 && ratingScore == null) ratingLabel,
-      ];
+  /// ما يجعل السعي ناقصاً: الامتحانات الشهرية المؤجلة فقط.
+  List<String> get missing => postponed;
 
   bool get isComplete => missing.isEmpty;
 
@@ -72,7 +80,7 @@ class SemesterBreakdown {
   double get partialTotal => (monthlyPart ?? 0) + (dailyPart ?? 0) + (ratingPart ?? 0);
 
   /// سعي الفصل النهائي (مقرّب)، أو null إذا لم تكتمل عناصره.
-  double? get total => isComplete ? GradeUtils.rawRound(GradeUtils.clamp(partialTotal, 0, 100)) : null;
+  double? get total => !notStarted && isComplete ? GradeUtils.rawRound(GradeUtils.clamp(partialTotal, 0, 100)) : null;
 }
 
 /// نتيجة الطالب في السنة كاملة، كما تظهر في سجل المدرس.
@@ -154,24 +162,38 @@ class CalculationService {
       for (final e in store.dailyExams)
         if (e.sectionId == sectionId && e.semester == semester) e.id: store.dailyMaxOf(e),
     };
-    return store.dailyScores
-        .where((s) =>
-            maxOf.containsKey(s.examId) &&
-            s.studentId == studentId &&
-            s.status == 'درجة' &&
-            s.score != null)
-        .map((s) {
-          final max = maxOf[s.examId]!;
-          return s.score!.clamp(0, max) / max * 100;
-        })
-        .toList();
+    final mine = {
+      for (final s in store.dailyScores)
+        if (s.studentId == studentId && maxOf.containsKey(s.examId)) s.examId: s,
+    };
+    final out = <double>[];
+    for (final e in maxOf.entries) {
+      final s = mine[e.key];
+      if (s != null && s.status == 'غائب') continue; // الغائب مستبعد من معدله
+      if (s != null && s.status == 'درجة' && s.score != null) {
+        out.add(s.score!.clamp(0, e.value) / e.value * 100);
+      } else {
+        out.add(0); // لم تُدخل درجته = 0
+      }
+    }
+    return out;
   }
 
   SemesterBreakdown semester(String studentId, String sectionId, int semester) {
     final monthly = <String, double>{};
+    final postponed = <String>[];
     for (final def in store.monthlyExamsOf(sectionId, semester)) {
-      final score = monthlyExam(studentId, sectionId, def.key);
-      if (score != null) monthly[def.key] = score;
+      MonthlyExamScore? rec;
+      for (final m in store.monthlyScores) {
+        if (m.studentId == studentId && m.sectionId == sectionId && m.period == def.key) rec = m;
+      }
+      if (rec?.score != null) {
+        monthly[def.key] = rec!.score!.clamp(0, 100).toDouble();
+      } else if (rec?.status == 'مؤجل') {
+        postponed.add(def.name);
+      } else {
+        monthly[def.key] = 0; // لم يُدخل
+      }
     }
     return SemesterBreakdown(
       semester: semester,
@@ -182,6 +204,9 @@ class CalculationService {
       dailyLabel: store.componentLabel('daily'),
       ratingLabel: store.componentLabel('rating'),
       ratingScore: store.ratingOf(studentId, sectionId, semester),
+      postponed: postponed,
+      examCount: store.monthlyExamsOf(sectionId, semester).length +
+          store.dailyExams.where((e) => e.sectionId == sectionId && e.semester == semester).length,
       monthlyWeight: monthlyWeight,
       dailyWeight: dailyWeight,
       ratingWeight: ratingWeight,

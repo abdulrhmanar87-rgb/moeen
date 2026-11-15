@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../core/app_theme.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/sound/tick_sound.dart';
@@ -157,7 +159,7 @@ class _RatingSliderState extends State<RatingSlider> with SingleTickerProviderSt
               height: _track,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE9E6F2),
+                  color: context.palette.track,
                   borderRadius: BorderRadius.circular(_track),
                 ),
               ),
@@ -183,7 +185,7 @@ class _RatingSliderState extends State<RatingSlider> with SingleTickerProviderSt
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: !unrated && (i <= _shown + .01) ? Colors.white.withValues(alpha: .85) : const Color(0xFFC9C3DA),
+                    color: !unrated && (i <= _shown + .01) ? Colors.white.withValues(alpha: .85) : context.palette.outline,
                   ),
                 ),
               ),
@@ -218,7 +220,7 @@ class _RatingSliderState extends State<RatingSlider> with SingleTickerProviderSt
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white,
-                    border: Border.all(color: unrated ? const Color(0xFFC9C3DA) : color, width: unrated ? 2 : 3),
+                    border: Border.all(color: unrated ? context.palette.outline : color, width: unrated ? 2 : 3),
                     boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 6, offset: Offset(0, 2))],
                   ),
                 ),

@@ -37,7 +37,7 @@ class _HomePageState extends State<HomePage> {
   }
 
 
-  static const _ink = AppTheme.primaryDark;
+  Color get _ink => context.palette.ink;
   static const _tabColors = [
     Color(0xFF5B45B5),
     Color(0xFF2E8B7A),
@@ -120,23 +120,23 @@ class _HomePageState extends State<HomePage> {
   // ---------------------------------------------------------------------------
 
   Widget _topBar() => Row(children: [
-        const Text('مُعين', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _ink)),
+        Text('مُعين', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _ink)),
         const SizedBox(width: 8),
         Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Text('مساعد الأستاذ · $appVersion', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+          child: Text('مساعد الأستاذ · $appVersion', style: TextStyle(fontSize: 14, color: context.palette.muted)),
         ),
         const Spacer(),
         IconButton(
           tooltip: 'الإعدادات',
           onPressed: () => open(SettingsPage(store: store)),
-          icon: const Icon(Icons.settings_outlined, color: _ink),
+          icon: Icon(Icons.settings_outlined, color: _ink),
         ),
       ]);
 
   Widget _heading(String text, {Widget? trailing}) => Row(children: [
         Expanded(
-          child: Text(text, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _ink)),
+          child: Text(text, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _ink)),
         ),
         if (trailing != null) trailing,
       ]);
@@ -156,29 +156,29 @@ class _HomePageState extends State<HomePage> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
       child: CustomPaint(
-        painter: const _RuledPaperPainter(),
+        painter: _RuledPaperPainter(context.palette),
         child: Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(40, 20, 20, 22),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(date, style: TextStyle(fontSize: 13.5, color: Colors.grey.shade600)),
+            Text(date, style: TextStyle(fontSize: 13.5, color: context.palette.muted)),
             const SizedBox(height: 6),
-            Text(greeting, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: _ink, height: 1.3)),
+            Text(greeting, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: _ink, height: 1.3)),
             const SizedBox(height: 6),
             Text(
               year.isEmpty ? semester : '$semester، العام الدراسي $year',
-              style: const TextStyle(fontSize: 14.5, color: Color(0xFF55506A)),
+              style: TextStyle(fontSize: 14.5, color: context.palette.muted),
             ),
             const SizedBox(height: 14),
             Text.rich(
               TextSpan(
-                style: const TextStyle(fontSize: 15, color: Color(0xFF55506A)),
+                style: TextStyle(fontSize: 15, color: context.palette.muted),
                 children: sections == 0
                     ? const [TextSpan(text: 'ابدأ بإضافة الصفوف والشعب التي تدرّسها.')]
                     : [
                         const TextSpan(text: 'في دفترك '),
-                        TextSpan(text: '$students', style: const TextStyle(fontWeight: FontWeight.w900, color: _ink, fontSize: 18)),
+                        TextSpan(text: '$students', style: TextStyle(fontWeight: FontWeight.w900, color: _ink, fontSize: 18)),
                         const TextSpan(text: ' طالباً في '),
-                        TextSpan(text: '$sections', style: const TextStyle(fontWeight: FontWeight.w900, color: _ink, fontSize: 18)),
+                        TextSpan(text: '$sections', style: TextStyle(fontWeight: FontWeight.w900, color: _ink, fontSize: 18)),
                         TextSpan(text: sections == 1 ? ' شعبة.' : ' شعب.'),
                       ],
               ),
@@ -193,28 +193,28 @@ class _HomePageState extends State<HomePage> {
   Widget _backupReminder() {
     final last = store.lastBackupAt;
     return Material(
-      color: const Color(0xFFFFF6E0),
+      color: context.palette.warnBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: Color(0xFFF1D58A)),
+        side: BorderSide(color: context.palette.warnBorder),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
         child: Row(children: [
-          const Icon(Icons.shield_outlined, color: Color(0xFF8A5A00)),
+          Icon(Icons.shield_outlined, color: context.palette.warnText),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               last == null
                   ? 'لم تحفظ نسخة احتياطية بعد. بياناتك موجودة في هذا المتصفح فقط.'
                   : 'آخر نسخة احتياطية ${BackupActions.ago(last)}. احفظ نسخة جديدة حتى لا تضيع الدرجات.',
-              style: const TextStyle(color: Color(0xFF6B4700), height: 1.5),
+              style: TextStyle(color: context.palette.warnText, height: 1.5),
             ),
           ),
           const SizedBox(width: 8),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF8A5A00),
+              backgroundColor: context.palette.warnText,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             ),
             onPressed: () async {
@@ -259,10 +259,10 @@ class _HomePageState extends State<HomePage> {
     return SizedBox(
       width: 178,
       child: Material(
-        color: selected ? Color.alphaBlend(color.withValues(alpha: .07), Colors.white) : Colors.white,
+        color: selected ? Color.alphaBlend(color.withValues(alpha: .07), context.palette.card) : context.palette.card,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: selected ? color : const Color(0xFFE6E2F2), width: selected ? 2 : 1),
+          side: BorderSide(color: selected ? color : context.palette.border, width: selected ? 2 : 1),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -297,7 +297,7 @@ class _HomePageState extends State<HomePage> {
                     s.subjectName.isEmpty ? '$count طالب' : '${s.subjectName}، $count طالب',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 12.5, color: context.palette.muted),
                   ),
                   const Spacer(),
                   ClipRRect(
@@ -312,7 +312,7 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 5),
                   Text(
                     count == 0 ? 'لا يوجد طلاب بعد' : 'اكتمل سعي $complete من $count',
-                    style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700),
+                    style: TextStyle(fontSize: 11.5, color: context.palette.muted),
                   ),
                 ]),
               ),
@@ -324,15 +324,15 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _emptySections() => Material(
-        color: Colors.white,
+        color: context.palette.card,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFFE6E2F2)),
+          side: BorderSide(color: context.palette.border),
         ),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Row(children: [
-            const Icon(Icons.bookmark_add_outlined, size: 34, color: AppTheme.primary),
+            Icon(Icons.bookmark_add_outlined, size: 34, color: context.palette.primary),
             const SizedBox(width: 14),
             const Expanded(
               child: Text('لا توجد شعب بعد. استورد ملف الشعبة الذي أرسلته الإدارة، فتُضاف الشعبة وأسماء طلابها، '
@@ -390,10 +390,10 @@ class _HomePageState extends State<HomePage> {
   }) {
     final fg = filled ? Colors.white : _ink;
     return Material(
-      color: filled ? _ink : Colors.white,
+      color: filled ? context.palette.hero : context.palette.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: filled ? BorderSide.none : const BorderSide(color: Color(0xFFD7D0F2)),
+        side: filled ? BorderSide.none : BorderSide(color: context.palette.outline),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -433,10 +433,10 @@ class _HomePageState extends State<HomePage> {
       (Icons.class_outlined, 'الصفوف والشعب', 'الصفوف والشعب وبيانات المدرسة', SetupPage(store: store)),
     ];
     return Material(
-      color: Colors.white,
+      color: context.palette.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFE6E2F2)),
+        side: BorderSide(color: context.palette.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(children: [
@@ -445,8 +445,8 @@ class _HomePageState extends State<HomePage> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             leading: Icon(items[i].$1, color: _ink),
             title: Text(items[i].$2, style: const TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: Text(items[i].$3, style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600)),
-            trailing: const Icon(Icons.chevron_left_rounded, color: Color(0xFFA9A2BF)),
+            subtitle: Text(items[i].$3, style: TextStyle(fontSize: 12.5, color: context.palette.muted)),
+            trailing: Icon(Icons.chevron_left_rounded, color: context.palette.faint),
             onTap: () => open(items[i].$4),
           ),
           if (i < items.length - 1) const Divider(height: 1, indent: 56),
@@ -458,13 +458,14 @@ class _HomePageState extends State<HomePage> {
 
 /// ورقة دفتر: خلفية بيضاء، أسطر أفقية خفيفة، وهامش أحمر على اليمين.
 class _RuledPaperPainter extends CustomPainter {
-  const _RuledPaperPainter();
+  const _RuledPaperPainter(this.palette);
+  final MoeenPalette palette;
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = Colors.white);
+    canvas.drawRect(Offset.zero & size, Paint()..color = palette.card);
     final rule = Paint()
-      ..color = const Color(0xFFE4E9F5)
+      ..color = palette.paperRule
       ..strokeWidth = 1;
     for (double y = 46; y < size.height; y += 28) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), rule);
@@ -479,10 +480,10 @@ class _RuledPaperPainter extends CustomPainter {
       RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(18)),
       Paint()
         ..style = PaintingStyle.stroke
-        ..color = const Color(0xFFE6E2F2),
+        ..color = palette.border,
     );
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _RuledPaperPainter oldDelegate) => oldDelegate.palette != palette;
 }

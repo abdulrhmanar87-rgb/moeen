@@ -264,7 +264,7 @@ class _GradeEntryPageState extends State<GradeEntryPage> {
               Text(widget.title, style: const TextStyle(fontWeight: FontWeight.w900)),
               Text(
                 '${widget.subtitle.isEmpty ? '' : '${widget.subtitle} · '}من ${_fmt(max)}',
-                style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 12.5, color: context.palette.muted),
               ),
             ]),
             actions: [
@@ -316,7 +316,7 @@ class _GradeEntryPageState extends State<GradeEntryPage> {
                 icon: const Icon(Icons.check_rounded),
                 label: const Text('تم، رجوع'),
               )
-            : Text('الدرجات تُحفظ تلقائياً', style: TextStyle(color: Colors.grey.shade500, fontSize: 12.5)),
+            : Text('الدرجات تُحفظ تلقائياً', style: TextStyle(color: context.palette.faint, fontSize: 12.5)),
       );
 
   Widget _row(MoeenPalette p, int i) {
@@ -334,7 +334,7 @@ class _GradeEntryPageState extends State<GradeEntryPage> {
       color = _amber;
     } else if (v.score != null) {
       text = _fmt(v.score!);
-      color = v.score! < max / 2 ? _red : const Color(0xFF222222);
+      color = v.score! < max / 2 ? _red : context.palette.text;
     } else {
       text = '';
       color = Colors.grey;
@@ -342,7 +342,7 @@ class _GradeEntryPageState extends State<GradeEntryPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
       child: Material(
-        color: current ? p.soft : Colors.white,
+        color: current ? p.soft : context.palette.card,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
           side: BorderSide(color: current ? (_flash ? _red : p.primary) : p.border, width: current ? 2 : 1),
@@ -355,7 +355,7 @@ class _GradeEntryPageState extends State<GradeEntryPage> {
             const SizedBox(width: 12),
             SizedBox(
               width: 28,
-              child: Text('${i + 1}', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w700)),
+              child: Text('${i + 1}', style: TextStyle(color: context.palette.muted, fontWeight: FontWeight.w700)),
             ),
             Expanded(
               child: Text(s.name,
@@ -369,9 +369,9 @@ class _GradeEntryPageState extends State<GradeEntryPage> {
               margin: const EdgeInsets.all(6),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: current ? Colors.white : (v.isEmpty ? Colors.grey.shade50 : Colors.transparent),
+                color: current ? context.palette.card : (v.isEmpty ? context.palette.cardAlt : Colors.transparent),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: current ? p.primary.withValues(alpha: .4) : Colors.grey.shade200),
+                border: Border.all(color: current ? p.primary.withValues(alpha: .4) : context.palette.border),
               ),
               child: Text(
                 text.isEmpty && current ? '|' : text,
@@ -395,7 +395,7 @@ class _GradeEntryPageState extends State<GradeEntryPage> {
           child: Padding(
             padding: const EdgeInsets.all(3),
             child: Material(
-              color: bg ?? Colors.white,
+              color: bg ?? context.palette.card,
               borderRadius: BorderRadius.circular(12),
               child: InkWell(
                 canRequestFocus: false,
@@ -409,10 +409,10 @@ class _GradeEntryPageState extends State<GradeEntryPage> {
                         fontFamily: AppTheme.fontFamily,
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
-                        color: finished ? Colors.grey : (fg ?? const Color(0xFF222222)),
+                        color: finished ? Colors.grey : (fg ?? context.palette.text),
                       ),
                       child: IconTheme(
-                        data: IconThemeData(color: finished ? Colors.grey : (fg ?? const Color(0xFF222222))),
+                        data: IconThemeData(color: finished ? Colors.grey : (fg ?? context.palette.text)),
                         child: child,
                       ),
                     ),
@@ -444,16 +444,16 @@ class _GradeEntryPageState extends State<GradeEntryPage> {
                   ]),
                   Row(children: [
                     digit('4'), digit('5'), digit('6'),
-                    key(Text(widget.absentLabel, style: small), _absent, bg: const Color(0xFFFFF1E2), fg: _amber),
+                    key(Text(widget.absentLabel, style: small), _absent, bg: context.palette.tint(const Color(0xFFD9822B)), fg: _amber),
                   ]),
                   Row(children: [
                     digit('7'), digit('8'), digit('9'),
-                    key(Text('كاملة ${_fmt(max)}', style: small), _full, bg: const Color(0xFFE6F6EE), fg: AppTheme.success),
+                    key(Text('كاملة ${_fmt(max)}', style: small), _full, bg: context.palette.tint(AppTheme.success), fg: AppTheme.success),
                   ]),
                   Row(children: [
                     key(const Icon(Icons.keyboard_arrow_up_rounded, size: 30), index == 0 ? null : _prev),
                     key(const Text('0'), () => _digit('0'), flex: 2),
-                    key(const Icon(Icons.keyboard_arrow_down_rounded, size: 30), _next, bg: p.primary, fg: Colors.white),
+                    key(const Icon(Icons.keyboard_arrow_down_rounded, size: 30), _next, bg: p.heroAlt, fg: Colors.white),
                   ]),
                 ]),
               ),

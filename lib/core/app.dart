@@ -19,6 +19,10 @@ class MoeenApp extends StatefulWidget {
     await state?._open(mode);
   }
 
+  /// إعادة رسم التطبيق بعد تغيير المظهر (فاتح/داكن/تلقائي).
+  static void refreshTheme(BuildContext context) =>
+      context.findAncestorStateOfType<_MoeenAppState>()?.refresh();
+
   @override
   State<MoeenApp> createState() => _MoeenAppState();
 }
@@ -33,6 +37,14 @@ class _MoeenAppState extends State<MoeenApp> {
     final mode = widget.initialMode;
     if (mode != null) _open(mode);
   }
+
+  void refresh() => setState(() {});
+
+  ThemeMode get _themeMode => switch (_store?.settings['themeMode']) {
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ => ThemeMode.system,
+      };
 
   Future<void> _open(String mode) async {
     setState(() => _loading = true);
@@ -64,7 +76,7 @@ class _MoeenAppState extends State<MoeenApp> {
       title: 'مُعين — مساعد الأستاذ',
       theme: store?.isAdmin == true ? AppTheme.adminLight : AppTheme.light,
       darkTheme: store?.isAdmin == true ? AppTheme.adminDark : AppTheme.dark,
-      themeMode: ThemeMode.system,
+      themeMode: _themeMode,
       home: home,
       // شريط أحمر ثابت إذا فشل الحفظ، حتى لا يظن المدرس أن الدرجات حُفظت.
       builder: (context, child) => store == null

@@ -104,11 +104,11 @@ class _AdminResultsPageState extends State<AdminResultsPage> {
                   const SizedBox(height: 14),
                   _summary(svc.summary(s)),
                   const SizedBox(height: 18),
-                  const Text('المواد', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AdminColors.ink)),
+                  Text('المواد', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: context.palette.ink)),
                   const SizedBox(height: 8),
                   _receipts(svc.receipts(s)),
                   const SizedBox(height: 18),
-                  const Text('الطلاب', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AdminColors.ink)),
+                  Text('الطلاب', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: context.palette.ink)),
                   const SizedBox(height: 8),
                   if (students.isEmpty)
                     const Text('لا يوجد طلاب في هذه الشعبة.')
@@ -172,7 +172,7 @@ class _AdminResultsPageState extends State<AdminResultsPage> {
     final status = r.status.isEmpty ? 'ناقص' : r.status;
     final color = _statusColors[status] ?? Colors.grey;
     return ListTile(
-      leading: SizedBox(width: 26, child: Text('$n', style: TextStyle(color: Colors.grey.shade600))),
+      leading: SizedBox(width: 26, child: Text('$n', style: TextStyle(color: context.palette.muted))),
       title: Text(st.name, style: const TextStyle(fontWeight: FontWeight.w700)),
       subtitle: Text(r.statusDetail, style: TextStyle(color: color, fontSize: 12.5)),
       trailing: const Icon(Icons.chevron_left_rounded),

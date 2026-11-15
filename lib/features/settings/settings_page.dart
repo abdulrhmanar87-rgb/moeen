@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../core/app_theme.dart';
 import '../../core/storage/app_store.dart';
 import '../../core/utils/arabic_numbers.dart';
 import 'backup_actions.dart';
@@ -66,7 +68,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: Row(children: [
-                          Icon(item.$3, size: 22, color: Colors.grey.shade600),
+                          Icon(item.$3, size: 22, color: context.palette.muted),
                           const SizedBox(width: 8),
                           Expanded(
                             flex: 3,
@@ -186,10 +188,10 @@ class _SettingsPageState extends State<SettingsPage> {
                   style: TextStyle(height: 1.5),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'تنبيه: عند تفعيلها تُرسل صورة ورقة الأسماء إلى Google لقراءتها. '
                   'احصل على مفتاح مجاني من Google AI Studio والصقه هنا. اتركه فارغاً لإيقافها.',
-                  style: TextStyle(height: 1.5, fontSize: 12.5, color: Color(0xFF9A6A00)),
+                  style: TextStyle(height: 1.5, fontSize: 12.5, color: context.palette.warnText),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -288,7 +290,7 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Text(
           'بياناتك محفوظة داخل هذا المتصفح فقط. إذا مُسحت بيانات المتصفح أو تغيّر الجهاز تضيع، '
           'لذلك احفظ نسخة احتياطية بانتظام وانقلها إلى مكان آمن.',
-          style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700, height: 1.6),
+          style: TextStyle(fontSize: 12.5, color: context.palette.muted, height: 1.6),
         ),
       ),
       ListTile(
@@ -323,7 +325,7 @@ class _SettingsPageState extends State<SettingsPage> {
       if (persisted != null)
         ListTile(
           leading: Icon(persisted ? Icons.verified_user_outlined : Icons.info_outline_rounded,
-              color: persisted ? const Color(0xFF2E8B57) : const Color(0xFF8A5A00)),
+              color: persisted ? const Color(0xFF2E8B57) : context.palette.warnText),
           title: Text(persisted ? 'البيانات محمية من المسح التلقائي' : 'البيانات غير محمية من المسح التلقائي'),
           subtitle: Text(persisted
               ? 'لن يمسحها المتصفح وحده عند امتلاء القرص. مسحها يدوياً من إعدادات المتصفح ما زال ممكناً، فاستمر بالنسخ الاحتياطي.'
@@ -343,6 +345,30 @@ class _SettingsPageState extends State<SettingsPage> {
           padding: const EdgeInsets.all(14),
           children: [
             _editionTile(store),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.dark_mode_outlined),
+              title: const Text('المظهر'),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: SegmentedButton<String>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(value: 'system', icon: Icon(Icons.brightness_auto_outlined), label: Text('تلقائي')),
+                    ButtonSegment(value: 'light', icon: Icon(Icons.light_mode_outlined), label: Text('فاتح')),
+                    ButtonSegment(value: 'dark', icon: Icon(Icons.dark_mode_outlined), label: Text('داكن')),
+                  ],
+                  selected: {(store.settings['themeMode'] as String?) ?? 'system'},
+                  onSelectionChanged: (v) async {
+                    store.settings['themeMode'] = v.first;
+                    await store.saveAll();
+                    if (!context.mounted) return;
+                    MoeenApp.refreshTheme(context);
+                    setState(() {});
+                  },
+                ),
+              ),
+            ),
             const Divider(),
             if (!store.isAdmin) ...[
             ListTile(

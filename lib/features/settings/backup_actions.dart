@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/app_theme.dart';
+
 import '../../core/backup/file_saver.dart';
 import '../../core/storage/app_store.dart';
 
@@ -59,7 +61,7 @@ class BackupActions {
       builder: (dc) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          icon: const Icon(Icons.shield_outlined, color: Color(0xFF8A5A00), size: 34),
+          icon: Icon(Icons.shield_outlined, color: context.palette.warnText, size: 34),
           title: const Text('احفظ نسخة احتياطية'),
           content: Text(
             '${last == null ? 'لم تحفظ نسخة احتياطية بعد' : 'آخر نسخة احتياطية ${ago(last)}'}. '
@@ -141,11 +143,11 @@ class BackupActions {
         child: AlertDialog(
           title: const Text('استعادة النسخة الاحتياطية؟'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            _summaryLine('تاريخ النسخة', summary.exportedAt == null ? 'غير معروف' : formatDate(summary.exportedAt!)),
-            if (summary.schoolName.isNotEmpty) _summaryLine('المدرسة', summary.schoolName),
-            _summaryLine('الشعب', '${summary.sections}'),
-            _summaryLine('الطلاب', '${summary.students}'),
-            _summaryLine('الدرجات المدخلة', '${summary.scores}'),
+            _summaryLine(context, 'تاريخ النسخة', summary.exportedAt == null ? 'غير معروف' : formatDate(summary.exportedAt!)),
+            if (summary.schoolName.isNotEmpty) _summaryLine(context, 'المدرسة', summary.schoolName),
+            _summaryLine(context, 'الشعب', '${summary.sections}'),
+            _summaryLine(context, 'الطلاب', '${summary.students}'),
+            _summaryLine(context, 'الدرجات المدخلة', '${summary.scores}'),
             const SizedBox(height: 12),
             Text(
               hasData
@@ -184,10 +186,10 @@ class BackupActions {
     return true;
   }
 
-  static Widget _summaryLine(String label, String value) => Padding(
+  static Widget _summaryLine(BuildContext context, String label, String value) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(children: [
-          SizedBox(width: 120, child: Text(label, style: const TextStyle(color: Colors.black54))),
+          SizedBox(width: 120, child: Text(label, style: TextStyle(color: context.palette.muted))),
           Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold))),
         ]),
       );

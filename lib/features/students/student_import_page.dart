@@ -52,8 +52,8 @@ class _StudentImportPageState extends State<StudentImportPage> {
   Set<String> _existingKeys = {};
   Set<String> _existingIds = {};
 
-  static const _amber = Color(0xFF8A5A00);
-  static const _amberBg = Color(0xFFFFF4D7);
+  Color get _amber => context.palette.warnText;
+  Color get _amberBg => context.palette.warnBg;
   static const _red = Color(0xFFB3261E);
 
   AppStore get store => widget.store;
@@ -100,7 +100,7 @@ class _StudentImportPageState extends State<StudentImportPage> {
       .where((e) => ArabicNameUtils.cleanName(e).isNotEmpty)
       .toList();
 
-  TextStyle get _hint => TextStyle(fontSize: 12.5, color: Colors.grey.shade600, height: 1.5);
+  TextStyle get _hint => TextStyle(fontSize: 12.5, color: context.palette.muted, height: 1.5);
 
   // ===========================================================================
   // الهيكل العام
@@ -120,7 +120,7 @@ class _StudentImportPageState extends State<StudentImportPage> {
             title: Column(mainAxisSize: MainAxisSize.min, children: [
               Text(_reviewing ? 'مراجعة الأسماء' : 'إضافة طلاب', style: const TextStyle(fontWeight: FontWeight.w800)),
               if (_sectionLabel.isNotEmpty)
-                Text(_sectionLabel, style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600)),
+                Text(_sectionLabel, style: TextStyle(fontSize: 12.5, color: context.palette.muted)),
             ]),
             actions: [
               if (_reviewing && _items.isNotEmpty)
@@ -224,7 +224,7 @@ class _StudentImportPageState extends State<StudentImportPage> {
             Expanded(
               child: Text(
                 count == 0 ? 'لم تُكتب أسماء بعد' : (count == 1 ? 'اسم واحد' : '$count أسماء'),
-                style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                style: TextStyle(color: context.palette.muted, fontWeight: FontWeight.w600),
               ),
             ),
             FilledButton.icon(
@@ -393,7 +393,7 @@ class _StudentImportPageState extends State<StudentImportPage> {
         children: [
           _pill(Icons.people_alt_rounded, '${_items.length} اسم', context.palette.soft, context.palette.ink),
           if (review > 0) _pill(Icons.warning_amber_rounded, '$review تحتاج مراجعة', _amberBg, _amber),
-          if (existing > 0) _pill(Icons.content_copy_rounded, '$existing موجود مسبقاً', const Color(0xFFFFE9E9), _red),
+          if (existing > 0) _pill(Icons.content_copy_rounded, '$existing موجود مسبقاً', context.palette.tint(_red), context.palette.sem(_red)),
           if (review > 0 || existing > 0)
             FilterChip(
               label: const Text('عرضها فقط'),
@@ -419,7 +419,7 @@ class _StudentImportPageState extends State<StudentImportPage> {
     final number = _items.indexOf(item) + 1;
     final existing = _isExisting(item);
     final reason = existing ? 'موجود مسبقاً في الشعبة — لن يُضاف مرة أخرى' : item.reviewReason;
-    final reasonColor = existing ? _red : _amber;
+    final reasonColor = existing ? context.palette.sem(_red) : _amber;
 
     return Padding(
       key: ObjectKey(item),
@@ -436,7 +436,7 @@ class _StudentImportPageState extends State<StudentImportPage> {
           width: 26,
           child: Padding(
             padding: const EdgeInsets.only(top: 16),
-            child: Text('$number', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600)),
+            child: Text('$number', textAlign: TextAlign.center, style: TextStyle(color: context.palette.muted)),
           ),
         ),
         const SizedBox(width: 4),
@@ -488,7 +488,7 @@ class _StudentImportPageState extends State<StudentImportPage> {
         IconButton(
           tooltip: 'حذف',
           onPressed: () => setState(() => _items.remove(item)),
-          icon: Icon(Icons.close_rounded, color: Colors.grey.shade500),
+          icon: Icon(Icons.close_rounded, color: context.palette.faint),
         ),
       ]),
     );

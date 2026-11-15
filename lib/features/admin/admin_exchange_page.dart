@@ -74,7 +74,7 @@ class _AdminExchangePageState extends State<AdminExchangePage> {
           'لكل شعبة ملف واحد فيه قائمة طلابها الموحّدة ومواد صفها. أرسل نفس الملف لكل مدرسي الشعبة '
           '(واتساب أو فلاش)، وكل مدرس يستورده من «ملفات الإدارة» في نسخته ويختار مادته. '
           'إذا أضفت طلاباً لاحقاً أرسل الملف من جديد.',
-          style: TextStyle(color: Colors.grey.shade700, height: 1.6),
+          style: TextStyle(color: context.palette.muted, height: 1.6),
         ),
         const SizedBox(height: 12),
         if (store.sections.isEmpty) const Text('لا توجد شعب بعد.'),
@@ -117,7 +117,7 @@ class _AdminExchangePageState extends State<AdminExchangePage> {
         Text(
           'اختر ملفات الدرجات التي أرسلها المدرسون، ويمكن اختيار عدة ملفات معاً. '
           'كل ملف يحل محل الدرجات السابقة لنفس المادة في نفس الشعبة.',
-          style: TextStyle(color: Colors.grey.shade700, height: 1.6),
+          style: TextStyle(color: context.palette.muted, height: 1.6),
         ),
         const SizedBox(height: 8),
         Card(
@@ -186,7 +186,7 @@ class _AdminExchangePageState extends State<AdminExchangePage> {
     final r = line.result;
     if (r == null) {
       return Card(
-        color: const Color(0xFFFFEDED),
+        color: context.palette.tint(const Color(0xFFD64545)),
         child: ListTile(
           leading: const Icon(Icons.error_outline_rounded, color: Colors.red),
           title: Text(line.fileName, style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -195,14 +195,14 @@ class _AdminExchangePageState extends State<AdminExchangePage> {
       );
     }
     final warn = r.unmatched.isNotEmpty || r.missingStudents.isNotEmpty || !r.subjectInList;
-    const info = TextStyle(color: AdminColors.ink, height: 1.5);
+    final info = TextStyle(color: context.palette.ink, height: 1.5);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Icon(warn ? Icons.info_outline_rounded : Icons.check_circle_rounded,
-                color: warn ? const Color(0xFF8A5A00) : AppTheme.success),
+                color: warn ? context.palette.warnText : AppTheme.success),
             const SizedBox(width: 8),
             Expanded(
               child: Text('${r.subject}: ${r.section.gradeName} ${r.section.name}',
@@ -220,16 +220,16 @@ class _AdminExchangePageState extends State<AdminExchangePage> {
             Text('أُضيف ${r.addedStudents.length} طالب من ملف المدرس: ${r.addedStudents.join('، ')}', style: info),
           if (r.addedStudents.isNotEmpty)
             Text('بعد اكتمال الأسماء أرسل «ملف الشعبة» لباقي المدرسين حتى تتطابق القوائم.',
-                style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700, height: 1.5)),
+                style: TextStyle(fontSize: 12.5, color: context.palette.muted, height: 1.5)),
           if (!r.subjectInList)
             Text('«${r.subject}» ليست في قائمة مواد ${r.section.gradeName}، فلن تدخل في النتيجة. أضفها من «الصفوف والشعب والمواد».',
-                style: const TextStyle(color: Color(0xFF8A5A00), height: 1.5)),
+                style: TextStyle(color: context.palette.warnText, height: 1.5)),
           if (r.unmatched.isNotEmpty)
             Text('أسماء عند المدرس غير موجودة في الشعبة: ${r.unmatched.join('، ')}',
-                style: const TextStyle(color: Color(0xFF8A5A00), height: 1.5)),
+                style: TextStyle(color: context.palette.warnText, height: 1.5)),
           if (r.missingStudents.isNotEmpty)
             Text('لم تصل درجات: ${r.missingStudents.join('، ')}',
-                style: const TextStyle(color: Color(0xFF8A5A00), height: 1.5)),
+                style: TextStyle(color: context.palette.warnText, height: 1.5)),
         ]),
       ),
     );

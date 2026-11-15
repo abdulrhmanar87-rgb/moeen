@@ -40,7 +40,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
 
   Color _scoreColor(double? v, [double max = 100]) {
     if (v == null) return Colors.grey;
-    return v < max / 2 ? _red : (v >= max * .85 ? _green : const Color(0xFF333333));
+    return v < max / 2 ? _red : (v >= max * .85 ? _green : context.palette.text);
   }
 
   @override
@@ -98,7 +98,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
   Widget _line(String label, String value, {Color? color, bool bold = false}) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(children: [
-          Expanded(child: Text(label, style: TextStyle(color: Colors.grey.shade800))),
+          Expanded(child: Text(label, style: TextStyle(color: context.palette.muted))),
           Text(value,
               style: TextStyle(fontWeight: bold ? FontWeight.w900 : FontWeight.w700, color: color, fontSize: bold ? 16 : 14.5)),
         ]),
@@ -109,7 +109,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
     final statusColor = status == 'ناجح' || status == 'ناجح بالإكمال' ? _green : (status == 'مكمل' ? _amber : _red);
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: p.ink, borderRadius: BorderRadius.circular(18)),
+      decoration: BoxDecoration(color: p.hero, borderRadius: BorderRadius.circular(18)),
       child: Row(children: [
         CircleAvatar(
           radius: 28,
@@ -156,7 +156,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
 
     return _card(p, 'الحضور', Icons.how_to_reg_outlined, [
       if (days.isEmpty)
-        Text('لم يُسجَّل حضور بعد.', style: TextStyle(color: Colors.grey.shade600))
+        Text('لم يُسجَّل حضور بعد.', style: TextStyle(color: context.palette.muted))
       else ...[
         Wrap(spacing: 8, runSpacing: 8, children: [
           _stat('أيام مسجلة', '${days.length}', p.ink),
@@ -186,7 +186,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
         decoration: BoxDecoration(color: c.withValues(alpha: .08), borderRadius: BorderRadius.circular(14)),
         child: Column(children: [
           Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: c)),
-          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+          Text(label, style: TextStyle(fontSize: 12, color: context.palette.muted)),
         ]),
       );
 
@@ -205,16 +205,16 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         decoration: BoxDecoration(
-          color: total == null ? Colors.grey.shade100 : p.soft,
+          color: total == null ? context.palette.cardAlt : p.soft,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           total == null ? (b.notStarted ? 'لم يبدأ بعد' : 'السعي ناقص (مؤجل)') : 'السعي ${_fmt(total)}',
-          style: TextStyle(fontWeight: FontWeight.w900, color: total == null ? Colors.grey.shade700 : _scoreColor(total)),
+          style: TextStyle(fontWeight: FontWeight.w900, color: total == null ? context.palette.muted : _scoreColor(total)),
         ),
       ),
       [
-        Text(b.monthlyLabel, style: TextStyle(fontWeight: FontWeight.w800, color: Colors.grey.shade800)),
+        Text(b.monthlyLabel, style: TextStyle(fontWeight: FontWeight.w800, color: context.palette.muted)),
         for (final def in store.monthlyExamsOf(sid, b.semester))
           _line(
             def.name,
@@ -225,11 +225,11 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
           ),
         const Divider(height: 18),
         Text(b.dailyLabel,
-            style: TextStyle(fontWeight: FontWeight.w800, color: Colors.grey.shade800)),
+            style: TextStyle(fontWeight: FontWeight.w800, color: context.palette.muted)),
         if (exams.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Text('لا توجد امتحانات يومية في هذا الفصل.', style: TextStyle(color: Colors.grey.shade600)),
+            child: Text('لا توجد امتحانات يومية في هذا الفصل.', style: TextStyle(color: context.palette.muted)),
           ),
         for (final e in exams) _dailyLine(e.id, e.title.isEmpty ? e.date : e.title, store.dailyMaxOf(e)),
         const Divider(height: 18),
@@ -295,7 +295,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
         ),
         [
           Text(st.notes.isEmpty ? 'لا توجد ملاحظات.' : st.notes,
-              style: TextStyle(color: st.notes.isEmpty ? Colors.grey.shade600 : null, height: 1.6)),
+              style: TextStyle(color: st.notes.isEmpty ? context.palette.muted : null, height: 1.6)),
         ],
       );
 

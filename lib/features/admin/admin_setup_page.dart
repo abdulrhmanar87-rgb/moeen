@@ -128,7 +128,7 @@ class _AdminSetupPageState extends State<AdminSetupPage> {
         padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            const Icon(Icons.school_rounded, color: AdminColors.ink, size: 20),
+            Icon(Icons.school_rounded, color: context.palette.ink, size: 20),
             const SizedBox(width: 8),
             Expanded(child: Text(grade, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900))),
             TextButton.icon(
@@ -152,7 +152,7 @@ class _AdminSetupPageState extends State<AdminSetupPage> {
             ),
             TextButton(onPressed: () => _editSubjects(grade), child: const Text('تعديل المواد')),
           ]),
-          Text(subjects.join('، '), style: TextStyle(color: Colors.grey.shade700, height: 1.6)),
+          Text(subjects.join('، '), style: TextStyle(color: context.palette.muted, height: 1.6)),
         ]),
       ),
     );
@@ -288,7 +288,7 @@ class _AdminSetupPageState extends State<AdminSetupPage> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.add_circle_rounded, color: AdminColors.primary),
+                    icon: Icon(Icons.add_circle_rounded, color: context.palette.primary),
                     onPressed: () => setDialogState(() {
                       final v = addC.text.trim();
                       if (v.isNotEmpty && !list.contains(v)) list.add(v);

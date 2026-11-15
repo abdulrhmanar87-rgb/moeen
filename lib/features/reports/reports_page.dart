@@ -80,7 +80,7 @@ class _ReportsPageState extends State<ReportsPage> {
                       Text(
                         'معدل الفصلين ونصف السنة والسعي السنوي والنهائي والإكمال لكل طالب، '
                         'يتحدث تلقائياً خلال السنة ويُطبع على ورق A4 (${students.length} طالب).',
-                        style: TextStyle(color: Colors.grey.shade700, height: 1.6),
+                        style: TextStyle(color: context.palette.muted, height: 1.6),
                       ),
                       const SizedBox(height: 14),
                       Row(children: [

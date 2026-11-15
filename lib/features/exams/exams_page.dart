@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../core/app_theme.dart';
 import '../../core/constants/semesters.dart';
 import '../../core/storage/app_store.dart';
 import '../../core/utils/arabic_numbers.dart';
@@ -323,7 +325,7 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 14),
             child: Text('لا توجد امتحانات شهرية في ${Semesters.name(semester)} بعد. أضف ما تحتاجه منها، فعددها غير محدد.',
-                style: TextStyle(color: Colors.grey.shade700, height: 1.6)),
+                style: TextStyle(color: context.palette.muted, height: 1.6)),
           ),
         for (final def in periods)
           Card(
@@ -433,8 +435,8 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
 
   bool get _soundOn => widget.store.settings['ratingSound'] != false;
 
-  static Color _ratingColor(int? score) {
-    if (score == null) return const Color(0xFFB8B4C6);
+  Color _ratingColor(int? score) {
+    if (score == null) return context.palette.faint;
     if (score >= 9) return const Color(0xFF2E9B5F);
     if (score == 8) return const Color(0xFF4FA85A);
     if (score == 7) return const Color(0xFF8DB43C);
@@ -527,7 +529,7 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          SizedBox(width: 28, child: Text('$number', style: TextStyle(color: Colors.grey.shade600))),
+          SizedBox(width: 28, child: Text('$number', style: TextStyle(color: context.palette.muted))),
           Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600))),
           AnimatedContainer(
             duration: const Duration(milliseconds: 160),
@@ -545,12 +547,12 @@ class _ExamsPageState extends State<ExamsPage> with SingleTickerProviderStateMix
         Row(children: [
           Padding(
             padding: const EdgeInsets.only(top: 22),
-            child: Text('0', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+            child: Text('0', style: TextStyle(fontSize: 11, color: context.palette.faint)),
           ),
           Expanded(child: sliderWidget),
           Padding(
             padding: const EdgeInsets.only(top: 22),
-            child: Text('10', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+            child: Text('10', style: TextStyle(fontSize: 11, color: context.palette.faint)),
           ),
         ]),
       ]),

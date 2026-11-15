@@ -20,14 +20,15 @@ class ModeChoicePage extends StatelessWidget {
                 shrinkWrap: true,
                 padding: const EdgeInsets.all(22),
                 children: [
-                  const Text('مُعين',
+                  Text('مُعين',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, color: AppTheme.primaryDark)),
+                      style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, color: context.palette.ink)),
                   const SizedBox(height: 6),
                   Text('من سيستخدم التطبيق على هذا الجهاز؟',
-                      textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey.shade700)),
+                      textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: context.palette.muted)),
                   const SizedBox(height: 24),
                   _choice(
+                    context,
                     icon: Icons.menu_book_rounded,
                     title: 'نسخة المدرس',
                     body: 'طلاب شعبك، الحضور، الامتحانات والتقدير، سعي الفصل، وسجل المدرس لمادتك.',
@@ -35,16 +36,17 @@ class ModeChoicePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   _choice(
+                    context,
                     icon: Icons.account_balance_rounded,
                     title: 'نسخة الإدارة',
                     body: 'للمدير أو المعاون: إعداد الشعب ومواد كل صف، إرسال قوائم الطلاب للمدرسين، '
                         'استلام درجات كل المواد، والنتائج والسجل الوسطي.',
-                    palette: MoeenPalette.admin,
+                    palette: Theme.of(context).brightness == Brightness.dark ? MoeenPalette.adminDark : MoeenPalette.admin,
                     onTap: () => onChoose(AppMode.admin),
                   ),
                   const SizedBox(height: 18),
                   Text('يمكنك التغيير لاحقاً من الإعدادات، ولكل نسخة بياناتها المنفصلة.',
-                      textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600)),
+                      textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: context.palette.muted)),
                 ],
               ),
             ),
@@ -54,15 +56,17 @@ class ModeChoicePage extends StatelessWidget {
     );
   }
 
-  Widget _choice({
+  Widget _choice(
+    BuildContext context, {
     required IconData icon,
     required String title,
     required String body,
     required VoidCallback onTap,
-    MoeenPalette palette = MoeenPalette.teacher,
+    MoeenPalette? palette,
   }) {
+    palette ??= context.palette;
     return Material(
-      color: Colors.white,
+      color: palette.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
         side: BorderSide(color: palette.outline),
@@ -84,10 +88,10 @@ class ModeChoicePage extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: palette.ink)),
                 const SizedBox(height: 4),
-                Text(body, style: TextStyle(color: Colors.grey.shade700, height: 1.5)),
+                Text(body, style: TextStyle(color: palette.muted, height: 1.5)),
               ]),
             ),
-            const Icon(Icons.chevron_left_rounded, color: Color(0xFFA9A2BF)),
+            Icon(Icons.chevron_left_rounded, color: palette.faint),
           ]),
         ),
       ),

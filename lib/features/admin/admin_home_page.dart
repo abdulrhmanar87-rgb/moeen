@@ -33,7 +33,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
     });
   }
 
-  static const _ink = AdminColors.ink;
+  Color get _ink => context.palette.ink;
   AppStore get store => widget.store;
 
   Section? get _section {
@@ -64,17 +64,17 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 32),
                 children: [
                   Row(children: [
-                    const Text('مُعين', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _ink)),
+                    Text('مُعين', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _ink)),
                     const SizedBox(width: 8),
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text('نسخة الإدارة · $appVersion', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+                      child: Text('نسخة الإدارة · $appVersion', style: TextStyle(fontSize: 14, color: context.palette.muted)),
                     ),
                     const Spacer(),
                     IconButton(
                       tooltip: 'الإعدادات',
                       onPressed: () => open(SettingsPage(store: store)),
-                      icon: const Icon(Icons.settings_outlined, color: _ink),
+                      icon: Icon(Icons.settings_outlined, color: _ink),
                     ),
                   ]),
                   const SizedBox(height: 10),
@@ -85,7 +85,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   ],
                   const SizedBox(height: 24),
                   Row(children: [
-                    const Expanded(
+                    Expanded(
                       child: Text('الصفوف والشعب', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _ink)),
                     ),
                     TextButton.icon(
@@ -97,7 +97,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   const SizedBox(height: 8),
                   _sectionTabs(section, svc),
                   const SizedBox(height: 24),
-                  const Text('الخطوات', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _ink)),
+                  Text('الخطوات', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _ink)),
                   const SizedBox(height: 10),
                   _steps(section),
                 ],
@@ -115,22 +115,22 @@ class _AdminHomePageState extends State<AdminHomePage> {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: AlignmentDirectional.topStart,
           end: AlignmentDirectional.bottomEnd,
-          colors: [_ink, AdminColors.primary],
+          colors: [context.palette.hero, context.palette.heroAlt],
         ),
         borderRadius: BorderRadius.circular(18),
-        border: const Border(bottom: BorderSide(color: AdminColors.gold, width: 4)),
+        border: Border(bottom: BorderSide(color: context.palette.accent, width: 4)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AdminColors.gold.withValues(alpha: .22),
+              color: context.palette.accent.withValues(alpha: .22),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AdminColors.gold.withValues(alpha: .7)),
+              border: Border.all(color: context.palette.accent.withValues(alpha: .7)),
             ),
             child: const Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(Icons.account_balance_rounded, size: 15, color: Color(0xFFF3DB9C)),
@@ -152,24 +152,24 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 
   Widget _backupReminder() => Material(
-        color: const Color(0xFFFFF6E0),
+        color: context.palette.warnBg,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: Color(0xFFF1D58A)),
+          side: BorderSide(color: context.palette.warnBorder),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
           child: Row(children: [
-            const Icon(Icons.shield_outlined, color: Color(0xFF8A5A00)),
+            Icon(Icons.shield_outlined, color: context.palette.warnText),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 'آخر نسخة احتياطية: ${BackupActions.ago(store.lastBackupAt)}. درجات كل المواد هنا، فاحفظ نسخة.',
-                style: const TextStyle(color: Color(0xFF6B4700), height: 1.5),
+                style: TextStyle(color: context.palette.warnText, height: 1.5),
               ),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF8A5A00)),
+              style: FilledButton.styleFrom(backgroundColor: context.palette.warnText),
               onPressed: () async {
                 await BackupActions.export(context, store);
                 if (mounted) setState(() {});
@@ -199,16 +199,16 @@ class _AdminHomePageState extends State<AdminHomePage> {
     final grades = byGrade.keys.toList()..sort((a, b) => _gradeOrder(a).compareTo(_gradeOrder(b)));
     // بطاقة واحدة: كل صف سطر أفقي (اسم الصف ثم شعبه متجاورة).
     final card = Material(
-      color: Colors.white,
+      color: context.palette.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: AdminColors.border),
+        side: BorderSide(color: context.palette.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(children: [
         for (var i = 0; i < grades.length; i++) ...[
           _gradeBlock(grades[i], byGrade[grades[i]]!..sort((a, b) => a.name.compareTo(b.name)), selected, svc),
-          if (i < grades.length - 1) const Divider(height: 1, color: AdminColors.border),
+          if (i < grades.length - 1) Divider(height: 1, color: context.palette.border),
         ],
       ]),
     );
@@ -217,7 +217,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
       Padding(
         padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
         child: Text('الرقم بجانب الشعبة عدد طلابها، والدائرة عدد المواد المستلمة. اضغط الشعبة لفتح نتائجها.',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            style: TextStyle(fontSize: 12, color: context.palette.muted)),
       ),
     ]);
   }
@@ -242,8 +242,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
     final students = sections.fold<int>(0, (n, s) => n + store.studentsOf(s.id).length);
     final label = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       Text(grade.isEmpty ? 'بدون صف' : grade,
-          maxLines: 2, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w900, color: _ink, height: 1.3)),
-      Text('$students طالب', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+          maxLines: 2, style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w900, color: _ink, height: 1.3)),
+      Text('$students طالب', style: TextStyle(fontSize: 12, color: context.palette.muted)),
     ]);
     final chips = Wrap(spacing: 8, runSpacing: 8, children: [
       for (final s in sections) _sectionTile(s, selected?.id == s.id, svc),
@@ -259,7 +259,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   width: 3,
                   height: 34,
                   margin: const EdgeInsetsDirectional.only(end: 10),
-                  decoration: BoxDecoration(color: AdminColors.gold, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(color: context.palette.accent, borderRadius: BorderRadius.circular(2)),
                 ),
                 SizedBox(width: 130, child: label),
                 const SizedBox(width: 12),
@@ -279,10 +279,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
     return Tooltip(
       message: complete ? 'اكتملت المواد' : 'وصلت $done من $total مادة',
       child: Material(
-        color: isSelected ? AdminColors.selected : AdminColors.surface,
+        color: isSelected ? context.palette.selected : context.palette.cardAlt,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: isSelected ? _ink : AdminColors.border, width: isSelected ? 1.6 : 1),
+          side: BorderSide(color: isSelected ? _ink : context.palette.border, width: isSelected ? 1.6 : 1),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -298,14 +298,14 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 child: Text(s.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: _ink)),
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: _ink)),
               ),
               const SizedBox(width: 8),
               Text(count == 0 ? 'فارغة' : '$count',
                   style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
-                      color: count == 0 ? const Color(0xFFD64545) : Colors.grey.shade700)),
+                      color: count == 0 ? const Color(0xFFD64545) : context.palette.muted)),
               const SizedBox(width: 8),
               SizedBox(
                 width: 22,
@@ -316,10 +316,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
                         CircularProgressIndicator(
                           value: total == 0 ? 0 : done / total,
                           strokeWidth: 3,
-                          backgroundColor: AdminColors.border,
-                          valueColor: const AlwaysStoppedAnimation(AdminColors.gold),
+                          backgroundColor: context.palette.border,
+                          valueColor: AlwaysStoppedAnimation(context.palette.accent),
                         ),
-                        Text('$done', style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: Color(0xFF8A5A00))),
+                        Text('$done', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: context.palette.warnText)),
                       ]),
               ),
             ]),
@@ -342,10 +342,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
       (Icons.fact_check_outlined, 'النتائج والسجل الوسطي', 'المواد الناقصة، النتيجة العامة، الطباعة', AdminResultsPage(store: store)),
     ];
     return Material(
-      color: Colors.white,
+      color: context.palette.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AdminColors.border),
+        side: BorderSide(color: context.palette.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(children: [
@@ -354,11 +354,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             leading: CircleAvatar(
               radius: 16,
-              backgroundColor: AdminColors.soft,
-              child: Text('${i + 1}', style: const TextStyle(color: _ink, fontWeight: FontWeight.w900)),
+              backgroundColor: context.palette.soft,
+              child: Text('${i + 1}', style: TextStyle(color: _ink, fontWeight: FontWeight.w900)),
             ),
             title: Text(items[i].$2, style: const TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: Text(items[i].$3, style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600)),
+            subtitle: Text(items[i].$3, style: TextStyle(fontSize: 12.5, color: context.palette.muted)),
             trailing: Icon(items[i].$1, color: _ink),
             onTap: () => open(items[i].$4),
           ),

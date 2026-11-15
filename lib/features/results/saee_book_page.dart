@@ -162,7 +162,7 @@ class _SaeeBookPageState extends State<SaeeBookPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
             child: Text('الخانة الفارغة تُحسب صفراً في السعي · غ: غائب عن اليومي (يُستبعد) · م: مؤجل في الشهري (السعي ناقص حتى يُدخل)',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                style: TextStyle(fontSize: 12, color: context.palette.muted)),
           ),
         ]),
       ),
@@ -172,9 +172,9 @@ class _SaeeBookPageState extends State<SaeeBookPage> {
   Widget _table(MoeenPalette p, List<Student> students, List<_Col> cols) {
     Color groupColor(int g) => switch (g) {
           0 => p.soft,
-          1 => const Color(0xFFE8F1FB),
-          2 => const Color(0xFFFBF3E2),
-          _ => const Color(0xFFE3F3EA),
+          1 => context.palette.tint(const Color(0xFF3A7BD5)),
+          2 => context.palette.tint(const Color(0xFFC9A043)),
+          _ => context.palette.tint(AppTheme.success),
         };
     final border = BorderSide(color: p.border);
 
@@ -189,7 +189,7 @@ class _SaeeBookPageState extends State<SaeeBookPage> {
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: p.ink, height: 1.15)),
-            Text(c.sub, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+            Text(c.sub, style: TextStyle(fontSize: 10, color: context.palette.muted)),
           ]),
         );
 
@@ -205,7 +205,7 @@ class _SaeeBookPageState extends State<SaeeBookPage> {
         height: _rowH,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: total ? const Color(0xFFF1F9F4) : (odd ? const Color(0xFFFAF9FD) : Colors.white),
+          color: total ? context.palette.tint(AppTheme.success) : (odd ? context.palette.cardAlt : context.palette.card),
           border: Border(left: border, bottom: border),
         ),
         child: Text(v,
@@ -214,7 +214,7 @@ class _SaeeBookPageState extends State<SaeeBookPage> {
               fontWeight: total ? FontWeight.w900 : FontWeight.w800,
               color: v == 'غ' || v == 'م' || v == 'ناقص'
                   ? const Color(0xFFD9822B)
-                  : (low ? const Color(0xFFD64545) : const Color(0xFF222222)),
+                  : (low ? const Color(0xFFD64545) : context.palette.text),
             )),
       );
     }
@@ -226,7 +226,7 @@ class _SaeeBookPageState extends State<SaeeBookPage> {
         height: _headH,
         alignment: AlignmentDirectional.centerStart,
         padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(color: p.ink),
+        decoration: BoxDecoration(color: p.hero),
         child: const Text('اسم الطالب', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
       ),
       for (var i = 0; i < students.length; i++)
@@ -235,11 +235,11 @@ class _SaeeBookPageState extends State<SaeeBookPage> {
           height: _rowH,
           padding: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(
-            color: i.isOdd ? const Color(0xFFFAF9FD) : Colors.white,
+            color: i.isOdd ? context.palette.cardAlt : context.palette.card,
             border: Border(left: BorderSide(color: p.outline, width: 2), bottom: border),
           ),
           child: Row(children: [
-            SizedBox(width: 26, child: Text('${i + 1}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600))),
+            SizedBox(width: 26, child: Text('${i + 1}', style: TextStyle(fontSize: 12, color: context.palette.muted))),
             Expanded(
               child: Text(students[i].name,
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -257,7 +257,7 @@ class _SaeeBookPageState extends State<SaeeBookPage> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.palette.card,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: p.border),
       ),

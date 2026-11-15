@@ -201,9 +201,9 @@ class _AttendancePageState extends State<AttendancePage> {
                   Text(_isToday ? 'اليوم، ${_weekdays[day.weekday - 1]}' : _weekdays[day.weekday - 1],
                       style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: p.ink)),
                   Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Text('${day.day}/${day.month}/${day.year}', style: TextStyle(color: Colors.grey.shade700)),
+                    Text('${day.day}/${day.month}/${day.year}', style: TextStyle(color: context.palette.muted)),
                     const SizedBox(width: 6),
-                    Icon(Icons.calendar_month_outlined, size: 16, color: Colors.grey.shade600),
+                    Icon(Icons.calendar_month_outlined, size: 16, color: context.palette.muted),
                   ]),
                 ]),
               ),
@@ -262,7 +262,7 @@ class _AttendancePageState extends State<AttendancePage> {
     final marked = taken && status != present;
     final total = _absences(s.id);
     return Material(
-      color: marked ? c.withValues(alpha: .07) : Colors.white,
+      color: marked ? c.withValues(alpha: .07) : context.palette.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(color: marked ? c.withValues(alpha: .55) : p.border, width: marked ? 1.5 : 1),
@@ -279,14 +279,14 @@ class _AttendancePageState extends State<AttendancePage> {
           child: Row(children: [
             SizedBox(
               width: 28,
-              child: Text('${i + 1}', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w700)),
+              child: Text('${i + 1}', style: TextStyle(color: context.palette.muted, fontWeight: FontWeight.w700)),
             ),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(s.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 if (total > 0)
                   Text('غيابات الطالب: $total',
-                      style: TextStyle(fontSize: 12, color: total >= 5 ? _red : Colors.grey.shade600)),
+                      style: TextStyle(fontSize: 12, color: total >= 5 ? _red : context.palette.muted)),
               ]),
             ),
             AnimatedContainer(
@@ -296,13 +296,13 @@ class _AttendancePageState extends State<AttendancePage> {
               decoration: BoxDecoration(
                 color: taken || status != present ? c : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: taken || status != present ? c : Colors.grey.shade300),
+                border: Border.all(color: taken || status != present ? c : context.palette.border),
               ),
               child: Text(
                 status,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: taken || status != present ? Colors.white : Colors.grey.shade500,
+                  color: taken || status != present ? Colors.white : context.palette.faint,
                   fontWeight: FontWeight.w800,
                 ),
               ),

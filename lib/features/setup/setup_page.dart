@@ -254,7 +254,7 @@ class _SetupPageState extends State<SetupPage> {
                 child: Padding(
                   padding: const EdgeInsets.all(22),
                   child: Column(children: [
-                    const Icon(Icons.class_outlined, size: 46, color: AppTheme.primary),
+                    Icon(Icons.class_outlined, size: 46, color: context.palette.primary),
                     const SizedBox(height: 8),
                     const Text('لا توجد شعب بعد', style: TextStyle(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 4),
@@ -277,7 +277,7 @@ class _SetupPageState extends State<SetupPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Row(children: [
-                          const Icon(Icons.school_rounded, color: AppTheme.primaryDark, size: 20),
+                          Icon(Icons.school_rounded, color: context.palette.ink, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -297,10 +297,10 @@ class _SetupPageState extends State<SetupPage> {
                             contentPadding: const EdgeInsets.symmetric(horizontal: 4),
                             leading: CircleAvatar(
                               radius: 17,
-                              backgroundColor: AppTheme.softPurple,
+                              backgroundColor: context.palette.soft,
                               child: Text(
                                 s.name.isEmpty ? '?' : s.name.characters.first,
-                                style: const TextStyle(color: AppTheme.primaryDark, fontWeight: FontWeight.w800),
+                                style: TextStyle(color: context.palette.ink, fontWeight: FontWeight.w800),
                               ),
                             ),
                             title: Text('شعبة ${s.name}', style: const TextStyle(fontWeight: FontWeight.w700)),

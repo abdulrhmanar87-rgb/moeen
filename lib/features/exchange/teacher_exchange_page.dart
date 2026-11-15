@@ -50,13 +50,13 @@ class _TeacherExchangePageState extends State<TeacherExchangePage> {
                   ),
                 ),
                 const SizedBox(height: 18),
-                const Text('إرسال درجات المادة للإدارة',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppTheme.primaryDark)),
+                Text('إرسال درجات المادة للإدارة',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: context.palette.ink)),
                 const SizedBox(height: 4),
                 Text(
                   'يُرسل النتائج المحسوبة فقط (معدلا الفصلين، نصف السنة، السعي، النهائي، الإكمال). '
                   'إذا عدّلت درجة بعد الإرسال، أرسل الملف من جديد فيحل محل القديم.',
-                  style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700, height: 1.6),
+                  style: TextStyle(fontSize: 12.5, color: context.palette.muted, height: 1.6),
                 ),
                 const SizedBox(height: 10),
                 if (store.sections.isEmpty)
@@ -77,12 +77,12 @@ class _TeacherExchangePageState extends State<TeacherExchangePage> {
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Icon(icon, color: AppTheme.primaryDark),
+            Icon(icon, color: context.palette.ink),
             const SizedBox(width: 8),
             Expanded(child: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
           ]),
           const SizedBox(height: 6),
-          Text(body, style: TextStyle(color: Colors.grey.shade700, height: 1.6)),
+          Text(body, style: TextStyle(color: context.palette.muted, height: 1.6)),
           const SizedBox(height: 12),
           action,
         ]),
@@ -109,7 +109,7 @@ class _TeacherExchangePageState extends State<TeacherExchangePage> {
                 fromAdmin
                     ? 'مرتبطة بالإدارة: $linked من ${students.length} طالب • الدرجة النهائية مكتملة لـ $withFinal'
                     : 'غير مرتبطة بملف من الإدارة (ستُطابق الأسماء) • الدرجة النهائية مكتملة لـ $withFinal من ${students.length}',
-                style: TextStyle(fontSize: 12.5, color: fromAdmin ? Colors.grey.shade700 : const Color(0xFF8A5A00)),
+                style: TextStyle(fontSize: 12.5, color: fromAdmin ? context.palette.muted : context.palette.warnText),
               ),
             ]),
           ),
@@ -182,7 +182,7 @@ class _TeacherExchangePageState extends State<TeacherExchangePage> {
               if (r.teacherOnly.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 Text('عندك ${r.teacherOnly.length} طالب غير موجودين في قائمة الإدارة، ولن تصل درجاتهم:',
-                    style: const TextStyle(color: Color(0xFF8A5A00), fontWeight: FontWeight.w700)),
+                    style: TextStyle(color: context.palette.warnText, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
                 Text(r.teacherOnly.join('، '), style: const TextStyle(height: 1.6)),
                 const SizedBox(height: 4),

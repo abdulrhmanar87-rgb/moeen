@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/app_theme.dart';
+
 import '../../core/storage/app_store.dart';
 import '../../core/utils/arabic_name_utils.dart';
 import '../../core/utils/arabic_numbers.dart';
@@ -63,7 +65,7 @@ class _AdminStudentInfoPageState extends State<AdminStudentInfoPage> {
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
             child: Text(
               'يُحفظ تلقائياً. الاسم يُقسَّم في السجل إلى: الطالب | الأب | الجد | أب الجد واللقب.',
-              style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 12.5, color: context.palette.muted),
             ),
           ),
           Expanded(
@@ -103,14 +105,14 @@ class _AdminStudentInfoPageState extends State<AdminStudentInfoPage> {
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            SizedBox(width: 28, child: Text('$n', style: TextStyle(color: Colors.grey.shade600))),
+            SizedBox(width: 28, child: Text('$n', style: TextStyle(color: context.palette.muted))),
             Expanded(child: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w800))),
           ]),
           Padding(
             padding: const EdgeInsetsDirectional.only(start: 28, top: 2, bottom: 8),
             child: Text(
               parts.map((p) => p.isEmpty ? '—' : p).join('  |  '),
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 12, color: context.palette.muted),
             ),
           ),
           Wrap(spacing: 10, runSpacing: 10, children: [

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
 import '../../core/app_version.dart';
+import '../../core/ui/moeen_ui.dart';
 import '../../core/constants/semesters.dart';
 import '../../core/storage/app_store.dart';
 import '../../models/academic.dart';
-import '../../services/calculation_service.dart';
 import '../students/students_page.dart';
 import '../attendance/attendance_page.dart';
 import '../exams/exams_page.dart';
@@ -15,9 +15,11 @@ import '../settings/settings_page.dart';
 import '../settings/backup_actions.dart';
 import '../exchange/teacher_exchange_page.dart';
 
-/// الواجهة الرئيسية بفكرة «دفتر المدرس»:
-/// صفحة مسطّرة بهامش أحمر للتحية والتاريخ، ثم الشعب كألسنة دفتر،
-/// ثم مهام اليوم، ثم فهرس الأقسام.
+/// الواجهة الرئيسية للمدرس:
+/// - لوحة «الشعبة الحالية» بلون الحبر، عليها أسطر دفتر خفيفة وهامش،
+///   وفيها حالة اليوم (الحضور، آخر امتحان) وأكثر عملين يتكرران.
+/// - «شعبي»: قائمة هادئة لاختيار الشعبة.
+/// - فهرس مقسّم: السجلات، ثم البيانات. كل وجهة تظهر مرة واحدة.
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.store});
   final AppStore store;
@@ -36,17 +38,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-
-  Color get _ink => context.palette.ink;
-  static const _tabColors = [
-    Color(0xFF5B45B5),
-    Color(0xFF2E8B7A),
-    Color(0xFFD9822B),
-    Color(0xFF3A7BD5),
-    Color(0xFFC2477A),
-    Color(0xFF6B8E23),
-  ];
-
   static const _weekdays = ['الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
   static const _months = [
     'كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران',
@@ -54,6 +45,7 @@ class _HomePageState extends State<HomePage> {
   ];
 
   AppStore get store => widget.store;
+  MoeenPalette get p => context.palette;
 
   Section? get _section {
     for (final s in store.sections) {
@@ -62,8 +54,18 @@ class _HomePageState extends State<HomePage> {
     return store.sections.isEmpty ? null : store.sections.first;
   }
 
+  String get _today {
+    final n = DateTime.now();
+    return '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
+  }
+
   Future<void> open(Widget page) async {
     await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _select(Section s) async {
+    await store.setCurrentSection(s.id);
     if (mounted) setState(() {});
   }
 
@@ -77,37 +79,42 @@ class _HomePageState extends State<HomePage> {
           child: Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 960),
+              constraints: const BoxConstraints(maxWidth: 720),
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(18, 8, 18, 32),
+                padding: const EdgeInsets.fromLTRB(18, 4, 18, 36),
                 children: [
                   _topBar(),
-                  const SizedBox(height: 10),
-                  _notebookPage(),
+                  _greeting(),
+                  const SizedBox(height: 14),
+                  if (section == null) _emptySections() else _currentPanel(section),
                   if (BackupActions.needsReminder(store)) ...[
                     const SizedBox(height: 12),
                     _backupReminder(),
                   ],
-                  const SizedBox(height: 26),
-                  _heading('شعبي', trailing: TextButton.icon(
-                    onPressed: () => open(SetupPage(store: store)),
-                    icon: const Icon(Icons.add_rounded, size: 20),
-                    label: const Text('شعبة جديدة'),
-                  )),
-                  const SizedBox(height: 8),
-                  _sectionTabs(section),
-                  if (section != null) ...[
-                    const SizedBox(height: 26),
-                    _heading('مهام اليوم في ${section.gradeName} ${section.name}'),
-                    const SizedBox(height: 10),
-                    _todayActions(section),
-                    const SizedBox(height: 10),
-                    _adminLink(),
+                  if (store.sections.isNotEmpty) ...[
+                    _heading('شعبي', trailing: TextButton.icon(
+                      onPressed: () => open(SetupPage(store: store)),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('شعبة'),
+                    )),
+                    _sectionList(section),
                   ],
-                  const SizedBox(height: 26),
-                  _heading('كل الأقسام'),
-                  const SizedBox(height: 10),
-                  _index(section),
+                  _heading('السجلات'),
+                  _group([
+                    (Icons.table_chart_outlined, 'دفتر السعي', 'اليومي والشهري والتقدير أمام كل طالب',
+                        () => open(SaeeBookPage(store: store, initialSectionId: section?.id))),
+                    (Icons.menu_book_outlined, 'سجل المدرس النهائي', 'طباعة السجل على ورق A4',
+                        () => open(ReportsPage(store: store))),
+                  ]),
+                  _heading('البيانات'),
+                  _group([
+                    (Icons.download_for_offline_outlined, 'ملفات الإدارة', 'استلام قائمة الطلاب وإرسال الدرجات',
+                        () => open(TeacherExchangePage(store: store))),
+                    (Icons.groups_outlined, 'الطلاب', 'قائمة الشعبة وملف كل طالب',
+                        () => open(StudentsPage(store: store, initialSectionId: section?.id))),
+                    (Icons.grid_view_rounded, 'الصفوف والشعب', 'الشعب وبيانات المدرسة',
+                        () => open(SetupPage(store: store))),
+                  ]),
                 ],
               ),
             ),
@@ -119,371 +126,276 @@ class _HomePageState extends State<HomePage> {
 
   // ---------------------------------------------------------------------------
 
-  Widget _topBar() => Row(children: [
-        Text('مُعين', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _ink)),
-        const SizedBox(width: 8),
-        Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text('مساعد الأستاذ · $appVersion', style: TextStyle(fontSize: 14, color: context.palette.muted)),
-        ),
-        const Spacer(),
-        IconButton(
-          tooltip: 'الإعدادات',
-          onPressed: () => open(SettingsPage(store: store)),
-          icon: Icon(Icons.settings_outlined, color: _ink),
-        ),
-      ]);
-
-  Widget _heading(String text, {Widget? trailing}) => Row(children: [
-        Expanded(
-          child: Text(text, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _ink)),
-        ),
-        if (trailing != null) trailing,
-      ]);
-
-  /// صفحة دفتر مسطّرة: التاريخ والتحية والفصل الحالي.
-  Widget _notebookPage() {
-    final now = DateTime.now();
-    final date = '${_weekdays[now.weekday - 1]} ${now.day} ${_months[now.month - 1]} ${now.year}';
-    final teacher = (store.settings['teacherName'] ?? '').toString().trim();
-    final hello = now.hour < 12 ? 'صباح الخير' : 'مساء الخير';
-    final greeting = teacher.isEmpty ? hello : '$hello، أستاذ $teacher';
-    final year = store.years.isEmpty ? '' : store.years.first.name;
-    final semester = Semesters.name(Semesters.current());
-    final students = store.students.length;
-    final sections = store.sections.length;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: CustomPaint(
-        painter: _RuledPaperPainter(context.palette),
-        child: Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(40, 20, 20, 22),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(date, style: TextStyle(fontSize: 13.5, color: context.palette.muted)),
-            const SizedBox(height: 6),
-            Text(greeting, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: _ink, height: 1.3)),
-            const SizedBox(height: 6),
-            Text(
-              year.isEmpty ? semester : '$semester، العام الدراسي $year',
-              style: TextStyle(fontSize: 14.5, color: context.palette.muted),
-            ),
-            const SizedBox(height: 14),
-            Text.rich(
-              TextSpan(
-                style: TextStyle(fontSize: 15, color: context.palette.muted),
-                children: sections == 0
-                    ? const [TextSpan(text: 'ابدأ بإضافة الصفوف والشعب التي تدرّسها.')]
-                    : [
-                        const TextSpan(text: 'في دفترك '),
-                        TextSpan(text: '$students', style: TextStyle(fontWeight: FontWeight.w900, color: _ink, fontSize: 18)),
-                        const TextSpan(text: ' طالباً في '),
-                        TextSpan(text: '$sections', style: TextStyle(fontWeight: FontWeight.w900, color: _ink, fontSize: 18)),
-                        TextSpan(text: sections == 1 ? ' شعبة.' : ' شعب.'),
-                      ],
-              ),
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  /// تذكير لطيف بحفظ نسخة احتياطية (يظهر إذا مرّ أسبوع على آخر نسخة).
-  Widget _backupReminder() {
-    final last = store.lastBackupAt;
-    return Material(
-      color: context.palette.warnBg,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: context.palette.warnBorder),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+  Widget _topBar() => SizedBox(
+        height: 52,
         child: Row(children: [
-          Icon(Icons.shield_outlined, color: context.palette.warnText),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              last == null
-                  ? 'لم تحفظ نسخة احتياطية بعد. بياناتك موجودة في هذا المتصفح فقط.'
-                  : 'آخر نسخة احتياطية ${BackupActions.ago(last)}. احفظ نسخة جديدة حتى لا تضيع الدرجات.',
-              style: TextStyle(color: context.palette.warnText, height: 1.5),
-            ),
-          ),
+          Text('مُعين', style: TextStyle(fontSize: 23, color: p.ink)),
           const SizedBox(width: 8),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: context.palette.warnText,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            ),
-            onPressed: () async {
-              await BackupActions.export(context, store);
-              if (mounted) setState(() {});
-            },
-            child: const Text('حفظ نسخة'),
+          Padding(
+            padding: const EdgeInsets.only(top: 5),
+            child: Text(appVersion, style: TextStyle(fontSize: 12, color: p.faint)),
+          ),
+          const Spacer(),
+          IconButton(
+            tooltip: 'الإعدادات',
+            onPressed: () => open(SettingsPage(store: store)),
+            icon: Icon(Icons.settings_outlined, color: p.ink),
           ),
         ]),
-      ),
-    );
-  }
-
-  /// الشعب كألسنة دفتر ملوّنة؛ اختيار شعبة يحدد ما تفتحه «مهام اليوم» والفهرس.
-  Widget _sectionTabs(Section? selected) {
-    if (store.sections.isEmpty) {
-      return _emptySections();
-    }
-    final calc = CalculationService(store);
-    final semester = Semesters.current();
-    // شبكة بدل التمرير الأفقي: كل الشعب ظاهرة دون سحب.
-    return LayoutBuilder(builder: (context, c) {
-      final cols = (c.maxWidth / 180).floor().clamp(2, 4);
-      final w = (c.maxWidth - (cols - 1) * 10) / cols;
-      return Wrap(spacing: 10, runSpacing: 10, children: [
-        for (var i = 0; i < store.sections.length; i++)
-          Builder(builder: (_) {
-            final s = store.sections[i];
-            final students = store.studentsOf(s.id);
-            final complete = students.where((st) => calc.semester(st.id, s.id, semester).isComplete).length;
-            return SizedBox(
-              width: w,
-              height: 142,
-              child: _sectionTab(s, _tabColors[i % _tabColors.length], students.length, complete, selected?.id == s.id),
-            );
-          }),
-      ]);
-    });
-  }
-
-  Widget _sectionTab(Section s, Color color, int count, int complete, bool selected) {
-    return SizedBox(
-      width: 178,
-      child: Material(
-        color: selected ? Color.alphaBlend(color.withValues(alpha: .07), context.palette.card) : context.palette.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: selected ? color : context.palette.border, width: selected ? 2 : 1),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          // النقرة الأولى تختار الشعبة، والنقرة على الشعبة المختارة تفتح طلابها.
-          onTap: selected
-              ? () => open(StudentsPage(store: store, initialSectionId: s.id))
-              : () async {
-                  await store.setCurrentSection(s.id);
-                  if (mounted) setState(() {});
-                },
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            // كعب اللسان الملوّن
-            Container(width: 7, color: color),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    Text(s.name, style: TextStyle(fontSize: 30, height: 1, fontWeight: FontWeight.w900, color: color)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        s.gradeName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w800, height: 1.2),
-                      ),
-                    ),
-                  ]),
-                  const SizedBox(height: 6),
-                  Text(
-                    s.subjectName.isEmpty ? '$count طالب' : '${s.subjectName}، $count طالب',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12.5, color: context.palette.muted),
-                  ),
-                  const Spacer(),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: count == 0 ? 0 : complete / count,
-                      minHeight: 5,
-                      color: color,
-                      backgroundColor: color.withValues(alpha: .14),
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    count == 0 ? 'لا يوجد طلاب بعد' : 'اكتمل سعي $complete من $count',
-                    style: TextStyle(fontSize: 11.5, color: context.palette.muted),
-                  ),
-                ]),
-              ),
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  Widget _emptySections() => Material(
-        color: context.palette.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: context.palette.border),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(children: [
-            Icon(Icons.bookmark_add_outlined, size: 34, color: context.palette.primary),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Text('لا توجد شعب بعد. استورد ملف الشعبة الذي أرسلته الإدارة، فتُضاف الشعبة وأسماء طلابها، '
-                  'أو أضف شعبة يدوياً.', style: TextStyle(height: 1.5)),
-            ),
-            const SizedBox(width: 10),
-            Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              FilledButton(onPressed: () => open(TeacherExchangePage(store: store)), child: const Text('ملف الإدارة')),
-              TextButton(onPressed: () => open(SetupPage(store: store)), child: const Text('إضافة يدوية')),
-            ]),
-          ]),
-        ),
       );
 
-  /// أكثر عملين يتكرران يومياً، للشعبة المختارة.
-  Widget _todayActions(Section section) {
-    return Row(children: [
-      Expanded(
-        child: _bigAction(
-          icon: Icons.fact_check_rounded,
-          title: 'تسجيل الحضور',
-          subtitle: 'حاضر، غائب، مجاز',
-          filled: true,
-          onTap: () => open(AttendancePage(store: store, initialSectionId: section.id)),
-        ),
+  Widget _greeting() {
+    final now = DateTime.now();
+    final teacher = (store.settings['teacherName'] ?? '').toString().trim();
+    final hello = now.hour < 12 ? 'صباح الخير' : 'مساء الخير';
+    final year = store.years.isEmpty ? '' : '، ${store.years.first.name}';
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(
+        '${_weekdays[now.weekday - 1]} ${now.day} ${_months[now.month - 1]} · ${Semesters.name(Semesters.current())}$year',
+        style: TextStyle(fontSize: 13, color: p.muted),
       ),
-      const SizedBox(width: 10),
-      Expanded(
-        child: _bigAction(
-          icon: Icons.edit_note_rounded,
-          title: 'إدخال الدرجات',
-          subtitle: 'يومي، شهري، التقدير',
-          filled: false,
-          onTap: () => open(ExamsPage(store: store, initialSectionId: section.id)),
-        ),
-      ),
+      const SizedBox(height: 2),
+      Text(teacher.isEmpty ? hello : '$hello، أستاذ $teacher', style: TextStyle(fontSize: 21, color: p.text, height: 1.4)),
     ]);
   }
 
-  /// دور المدرس مع الإدارة: يستلم الأسماء ويرسل الدرجات.
-  Widget _adminLink() => _bigAction(
-        icon: Icons.swap_vert_circle_outlined,
-        title: 'ملفات الإدارة',
-        subtitle: 'استلام قائمة الطلاب من الإدارة، وإرسال الدرجات إليها',
-        filled: false,
-        onTap: () => open(TeacherExchangePage(store: store)),
-      );
+  Widget _heading(String text, {Widget? trailing}) => MoeenHeading(text, trailing: trailing);
 
-  Widget _bigAction({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool filled,
-    required VoidCallback onTap,
-  }) {
-    final fg = filled ? Colors.white : _ink;
-    return Material(
-      color: filled ? context.palette.hero : context.palette.card,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: filled ? BorderSide.none : BorderSide(color: context.palette.outline),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-          child: Row(children: [
-            Icon(icon, color: fg, size: 30),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 16)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: TextStyle(color: fg.withValues(alpha: .75), fontSize: 12.5)),
+  // ---------------------------------------------------------------------------
+  // لوحة الشعبة الحالية
+
+  /// حالة حضور اليوم: (نص، لون النقطة).
+  (String, Color) _attendanceStatus(Section s) {
+    if (!store.attendanceTaken(s.id, _today)) return ('حضور اليوم لم يُسجَّل بعد', const Color(0xFFF2BE6A));
+    var absent = 0;
+    for (final st in store.studentsOf(s.id)) {
+      if (store.attendanceOf(s.id, _today, st.id) == 'غائب') absent++;
+    }
+    return (absent == 0 ? 'حضور اليوم: الجميع حاضرون' : 'حضور اليوم: $absent غائب', const Color(0xFF7ED3A4));
+  }
+
+  /// آخر امتحان يومي في الفصل الحالي وكم أُدخل منه.
+  (String, Color)? _examStatus(Section s) {
+    final semester = Semesters.current();
+    final exams = store.dailyExams.where((e) => e.sectionId == s.id && e.semester == semester).toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+    if (exams.isEmpty) return null;
+    final e = exams.last;
+    final total = store.studentsOf(s.id).length;
+    final entered = store.dailyScores.where((x) => x.examId == e.id && (x.status == 'درجة' || x.status == 'غائب')).length;
+    final done = total > 0 && entered >= total;
+    return (
+      done ? '${e.title}: اكتمل الإدخال' : '${e.title}: أُدخلت درجات $entered من $total',
+      done ? const Color(0xFF7ED3A4) : const Color(0xFFF2BE6A),
+    );
+  }
+
+  Widget _currentPanel(Section s) {
+    final count = store.studentsOf(s.id).length;
+    final statuses = [_attendanceStatus(s), _examStatus(s)].whereType<(String, Color)>();
+    final sub = [if (s.subjectName.isNotEmpty) s.subjectName, '$count طالب'].join(' · ');
+    return HeroPanel(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${s.gradeName} · ${s.name}',
+                        style: const TextStyle(fontSize: 25, color: Colors.white, height: 1.3)),
+                    const SizedBox(height: 2),
+                    Text(sub, style: TextStyle(fontSize: 13.5, color: Colors.white.withValues(alpha: .74))),
+                  ]),
+                ),
+                if (store.sections.length > 1)
+                  GlassChip(icon: Icons.swap_vert_rounded, label: 'تغيير', onTap: _pickSection),
               ]),
-            ),
-          ]),
+              const SizedBox(height: 14),
+              for (final (text, color) in statuses)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 7),
+                  child: Row(children: [
+                    Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(text, style: TextStyle(fontSize: 13.5, color: Colors.white.withValues(alpha: .9))),
+                    ),
+                  ]),
+                ),
+              const SizedBox(height: 9),
+              Row(children: [
+                Expanded(
+                  child: PanelButton(
+                    icon: Icons.fact_check_outlined,
+                    label: 'تسجيل الحضور',
+                    primary: true,
+                    onTap: () => open(AttendancePage(store: store, initialSectionId: s.id)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: PanelButton(
+                    icon: Icons.edit_outlined,
+                    label: 'إدخال الدرجات',
+                    primary: false,
+                    onTap: () => open(ExamsPage(store: store, initialSectionId: s.id)),
+                  ),
+                ),
+              ]),
+            ]),
+    );
+  }
+
+  Future<void> _pickSection() async {
+    final picked = await showModalBottomSheet<Section>(
+      context: context,
+      showDragHandle: true,
+      builder: (sc) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                child: Text('اختر الشعبة', style: TextStyle(fontSize: 17, color: p.ink)),
+              ),
+              _sectionList(_section, onPick: (s) => Navigator.pop(sc, s)),
+            ]),
+          ),
         ),
       ),
     );
+    if (picked != null) await _select(picked);
   }
 
-  /// فهرس الدفتر: قائمة واحدة بفواصل بدل شبكة بطاقات متشابهة.
-  Widget _index(Section? section) {
-    final items = <(IconData, String, String, Widget)>[
-      (Icons.swap_vert_circle_outlined, 'ملفات الإدارة', 'استلام قائمة الطلاب من الإدارة وإرسال الدرجات إليها',
-          TeacherExchangePage(store: store)),
-      (Icons.groups_rounded, 'الطلاب', 'قائمة الشعبة، وإضافة يدوية إذا لم يصل ملف الإدارة',
-          StudentsPage(store: store, initialSectionId: section?.id)),
-      (Icons.fact_check_outlined, 'الحضور والغياب', 'سجل الحضور اليومي لكل شعبة',
-          AttendancePage(store: store, initialSectionId: section?.id)),
-      (Icons.edit_note_rounded, 'الامتحانات والتقدير', 'اليومي، الشهري، نصف السنة، والسلوك والمشاركة',
-          ExamsPage(store: store, initialSectionId: section?.id)),
-      (Icons.table_chart_outlined, 'دفتر السعي', 'درجات اليومي والشهري والتقدير أمام كل طالب، مع الطباعة',
-          SaeeBookPage(store: store, initialSectionId: section?.id)),
-      (Icons.menu_book_outlined, 'سجل المدرس النهائي', 'طباعة سجل المدرس على ورق A4', ReportsPage(store: store)),
-      (Icons.class_outlined, 'الصفوف والشعب', 'الصفوف والشعب وبيانات المدرسة', SetupPage(store: store)),
-    ];
-    return Material(
-      color: context.palette.card,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: context.palette.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(children: [
-        for (var i = 0; i < items.length; i++) ...[
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            leading: Icon(items[i].$1, color: _ink),
-            title: Text(items[i].$2, style: const TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: Text(items[i].$3, style: TextStyle(fontSize: 12.5, color: context.palette.muted)),
-            trailing: Icon(Icons.chevron_left_rounded, color: context.palette.faint),
-            onTap: () => open(items[i].$4),
+  // ---------------------------------------------------------------------------
+
+  Widget _sectionList(Section? selected, {ValueChanged<Section>? onPick}) {
+    return MoeenSurface(
+      children: [
+        for (final s in store.sections)
+          _row(
+            leading: MoeenRadio(on: s.id == selected?.id),
+            title: '${s.gradeName} · ${s.name}',
+            subtitle: s.subjectName.isEmpty ? null : s.subjectName,
+            selected: s.id == selected?.id,
+            trailing: _sectionMeta(s),
+            onTap: onPick != null
+                ? () => onPick(s)
+                // نقرة على شعبة أخرى تختارها، ونقرة على المختارة تفتح طلابها.
+                : s.id == selected?.id
+                    ? () => open(StudentsPage(store: store, initialSectionId: s.id))
+                    : () => _select(s),
           ),
-          if (i < items.length - 1) const Divider(height: 1, indent: 56),
-        ],
+      ],
+    );
+  }
+
+  Widget _sectionMeta(Section s) {
+    final count = store.studentsOf(s.id).length;
+    final taken = store.attendanceTaken(s.id, _today);
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: [
+      Text.rich(TextSpan(children: [
+        TextSpan(text: '$count', style: TextStyle(fontSize: 15, color: p.text)),
+        TextSpan(text: ' طالب', style: TextStyle(fontSize: 12, color: p.muted)),
+      ])),
+      if (taken)
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.check_rounded, size: 14, color: p.sem(AppTheme.success)),
+          const SizedBox(width: 3),
+          Text('حضور اليوم', style: TextStyle(fontSize: 11.5, color: p.sem(AppTheme.success))),
+        ]),
+    ]);
+  }
+
+  Widget _group(List<(IconData, String, String, VoidCallback)> items) => MoeenSurface(children: [
+        for (final (icon, title, sub, onTap) in items)
+          _row(
+            leading: IconTile(icon),
+            title: title,
+            subtitle: sub,
+            trailing: Icon(Icons.chevron_left_rounded, color: p.faint),
+            onTap: onTap,
+          ),
+      ]);
+
+  Widget _row({
+    required Widget leading,
+    required String title,
+    String? subtitle,
+    Widget? trailing,
+    bool selected = false,
+    required VoidCallback onTap,
+  }) =>
+      MoeenRow(leading: leading, title: title, subtitle: subtitle, trailing: trailing, selected: selected, onTap: onTap);
+
+  // ---------------------------------------------------------------------------
+
+  /// تذكير بحفظ نسخة احتياطية (يظهر إذا مرّ أسبوع على آخر نسخة).
+  Widget _backupReminder() {
+    final last = store.lastBackupAt;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: p.warnBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: p.warnBorder),
+      ),
+      child: Row(children: [
+        Icon(Icons.shield_outlined, color: p.warnText, size: 21),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            last == null ? 'لم تحفظ نسخة احتياطية بعد.' : 'آخر نسخة احتياطية ${BackupActions.ago(last)}.',
+            style: TextStyle(color: p.warnText, fontSize: 13, height: 1.5),
+          ),
+        ),
+        OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: p.warnText,
+            side: BorderSide(color: p.warnText.withValues(alpha: .7)),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            minimumSize: const Size(0, 38),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          onPressed: () async {
+            await BackupActions.export(context, store);
+            if (mounted) setState(() {});
+          },
+          child: const Text('حفظ نسخة'),
+        ),
       ]),
     );
   }
-}
 
-/// ورقة دفتر: خلفية بيضاء، أسطر أفقية خفيفة، وهامش أحمر على اليمين.
-class _RuledPaperPainter extends CustomPainter {
-  const _RuledPaperPainter(this.palette);
-  final MoeenPalette palette;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = palette.card);
-    final rule = Paint()
-      ..color = palette.paperRule
-      ..strokeWidth = 1;
-    for (double y = 46; y < size.height; y += 28) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), rule);
-    }
-    final margin = Paint()
-      ..color = const Color(0xFFE38B8F)
-      ..strokeWidth = 1.4;
-    final x = size.width - 26;
-    canvas.drawLine(Offset(x, 0), Offset(x, size.height), margin);
-    // إطار خفيف
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(18)),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..color = palette.border,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _RuledPaperPainter oldDelegate) => oldDelegate.palette != palette;
+  Widget _emptySections() => HeroPanel(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                const Text('ابدأ بشعبتك الأولى', style: TextStyle(fontSize: 23, color: Colors.white)),
+                const SizedBox(height: 6),
+                Text(
+                  'استورد ملف الشعبة الذي أرسلته الإدارة، فتُضاف الشعبة وأسماء طلابها مرة واحدة. '
+                  'أو أضف شعبة يدوياً إذا لم تستعمل مدرستك نسخة الإدارة.',
+                  style: TextStyle(fontSize: 13.5, color: Colors.white.withValues(alpha: .8), height: 1.6),
+                ),
+                const SizedBox(height: 16),
+                Row(children: [
+                  Expanded(
+                    child: PanelButton(
+                      icon: Icons.download_for_offline_outlined,
+                      label: 'ملف الإدارة',
+                      primary: true,
+                      onTap: () => open(TeacherExchangePage(store: store)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: PanelButton(
+                      icon: Icons.add_rounded,
+                      label: 'إضافة يدوية',
+                      primary: false,
+                      onTap: () => open(SetupPage(store: store)),
+                    ),
+                  ),
+                ]),
+              ]),
+      );
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/app_version.dart';
+import '../../core/ui/moeen_ui.dart';
 import '../../core/storage/app_store.dart';
 import '../../models/academic.dart';
 import '../../services/admin_results_service.dart';
@@ -63,42 +64,36 @@ class _AdminHomePageState extends State<AdminHomePage> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 32),
                 children: [
-                  Row(children: [
-                    Text('مُعين', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _ink)),
-                    const SizedBox(width: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text('نسخة الإدارة · $appVersion', style: TextStyle(fontSize: 14, color: context.palette.muted)),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      tooltip: 'الإعدادات',
-                      onPressed: () => open(SettingsPage(store: store)),
-                      icon: Icon(Icons.settings_outlined, color: _ink),
-                    ),
-                  ]),
-                  const SizedBox(height: 10),
-                  _header(),
+                  SizedBox(
+                    height: 52,
+                    child: Row(children: [
+                      Text('مُعين', style: TextStyle(fontSize: 23, color: _ink)),
+                      const SizedBox(width: 8),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 5),
+                        child: Text('الإدارة · $appVersion', style: TextStyle(fontSize: 12, color: context.palette.faint)),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: 'الإعدادات',
+                        onPressed: () => open(SettingsPage(store: store)),
+                        icon: Icon(Icons.settings_outlined, color: _ink),
+                      ),
+                    ]),
+                  ),
+                  const SizedBox(height: 6),
+                  _header(svc),
                   if (BackupActions.needsReminder(store)) ...[
                     const SizedBox(height: 10),
                     _backupReminder(),
                   ],
-                  const SizedBox(height: 24),
-                  Row(children: [
-                    Expanded(
-                      child: Text('الصفوف والشعب', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _ink)),
-                    ),
-                    TextButton.icon(
-                      onPressed: () => open(AdminSetupPage(store: store)),
-                      icon: const Icon(Icons.add_rounded, size: 20),
-                      label: const Text('شعبة جديدة'),
-                    ),
-                  ]),
-                  const SizedBox(height: 8),
+                  MoeenHeading('الصفوف والشعب', trailing: TextButton.icon(
+                    onPressed: () => open(AdminSetupPage(store: store)),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('شعبة'),
+                  )),
                   _sectionTabs(section, svc),
-                  const SizedBox(height: 24),
-                  Text('الخطوات', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _ink)),
-                  const SizedBox(height: 10),
+                  const MoeenHeading('خطوات العمل'),
                   _steps(section),
                 ],
               ),
@@ -109,44 +104,82 @@ class _AdminHomePageState extends State<AdminHomePage> {
     );
   }
 
-  Widget _header() {
+  /// لوحة المدرسة: الاسم، الأرقام، وأكثر عملين تحتاجهما الإدارة.
+  Widget _header(AdminResultsService svc) {
     final school = store.school?.name ?? '';
     final year = store.years.isEmpty ? '' : store.years.first.name;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [context.palette.hero, context.palette.heroAlt],
+    var complete = 0;
+    for (final s in store.sections) {
+      final r = svc.receipts(s);
+      if (r.isNotEmpty && r.every((x) => x.isComplete)) complete++;
+    }
+    final n = store.sections.length;
+    return HeroPanel(
+      marginColor: context.palette.accent,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: Text(school.isEmpty ? 'اسم المدرسة لم يُكتب بعد' : school,
+                style: const TextStyle(color: Colors.white, fontSize: 23, height: 1.3)),
+          ),
+          const SizedBox(width: 8),
+          Icon(Icons.account_balance_rounded, color: context.palette.accent, size: 26),
+        ]),
+        const SizedBox(height: 3),
+        Text(
+          [if (year.isNotEmpty) year, '$n شعبة', '${store.students.length} طالب'].join(' · '),
+          style: TextStyle(color: Colors.white.withValues(alpha: .76), fontSize: 13.5),
         ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border(bottom: BorderSide(color: context.palette.accent, width: 4)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: context.palette.accent.withValues(alpha: .22),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: context.palette.accent.withValues(alpha: .7)),
+        if (n > 0) ...[
+          const SizedBox(height: 14),
+          Row(children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: complete == n ? const Color(0xFF7ED3A4) : const Color(0xFFF2BE6A),
+                shape: BoxShape.circle,
+              ),
             ),
-            child: const Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.account_balance_rounded, size: 15, color: Color(0xFFF3DB9C)),
-              SizedBox(width: 6),
-              Text('الإدارة', style: TextStyle(color: Color(0xFFF3DB9C), fontSize: 12.5, fontWeight: FontWeight.w800)),
-            ]),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                complete == n ? 'وصلت درجات كل المواد في كل الشعب' : 'اكتملت مواد $complete من $n شعبة',
+                style: TextStyle(fontSize: 13.5, color: Colors.white.withValues(alpha: .9)),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 7),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: complete / n,
+              minHeight: 4,
+              color: context.palette.accent,
+              backgroundColor: Colors.white.withValues(alpha: .14),
+            ),
+          ),
+        ],
+        const SizedBox(height: 16),
+        Row(children: [
+          Expanded(
+            child: PanelButton(
+              icon: Icons.move_to_inbox_outlined,
+              label: 'استلام الدرجات',
+              primary: true,
+              onTap: () => open(AdminExchangePage(store: store, receive: true)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: PanelButton(
+              icon: Icons.outbox_outlined,
+              label: 'إرسال الشعب',
+              primary: false,
+              onTap: () => open(AdminExchangePage(store: store)),
+            ),
           ),
         ]),
-        const SizedBox(height: 10),
-        Text(school.isEmpty ? 'اسم المدرسة لم يُكتب بعد' : school,
-            style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 6),
-        Text(
-          '${year.isEmpty ? '' : 'العام الدراسي $year، '}${store.sections.length} شعبة، ${store.students.length} طالب',
-          style: TextStyle(color: Colors.white.withValues(alpha: .8), fontSize: 14.5),
-        ),
       ]),
     );
   }
@@ -168,8 +201,13 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 style: TextStyle(color: context.palette.warnText, height: 1.5),
               ),
             ),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: context.palette.warnText),
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: context.palette.warnText,
+                side: BorderSide(color: context.palette.warnText.withValues(alpha: .7)),
+                minimumSize: const Size(0, 38),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
               onPressed: () async {
                 await BackupActions.export(context, store);
                 if (mounted) setState(() {});
@@ -341,30 +379,15 @@ class _AdminHomePageState extends State<AdminHomePage> {
           AdminExchangePage(store: store, receive: true)),
       (Icons.fact_check_outlined, 'النتائج والسجل الوسطي', 'المواد الناقصة، النتيجة العامة، الطباعة', AdminResultsPage(store: store)),
     ];
-    return Material(
-      color: context.palette.card,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: context.palette.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(children: [
-        for (var i = 0; i < items.length; i++) ...[
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            leading: CircleAvatar(
-              radius: 16,
-              backgroundColor: context.palette.soft,
-              child: Text('${i + 1}', style: TextStyle(color: _ink, fontWeight: FontWeight.w900)),
-            ),
-            title: Text(items[i].$2, style: const TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: Text(items[i].$3, style: TextStyle(fontSize: 12.5, color: context.palette.muted)),
-            trailing: Icon(items[i].$1, color: _ink),
-            onTap: () => open(items[i].$4),
-          ),
-          if (i < items.length - 1) const Divider(height: 1, indent: 60),
-        ],
-      ]),
-    );
+    return MoeenSurface(children: [
+      for (var i = 0; i < items.length; i++)
+        MoeenRow(
+          leading: IconTile(items[i].$1, badge: '${i + 1}'),
+          title: items[i].$2,
+          subtitle: items[i].$3,
+          trailing: Icon(Icons.chevron_left_rounded, color: context.palette.faint),
+          onTap: () => open(items[i].$4),
+        ),
+    ]);
   }
 }

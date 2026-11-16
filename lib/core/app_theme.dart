@@ -273,6 +273,41 @@ class AppTheme {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         foregroundColor: p.ink,
+        titleTextStyle: TextStyle(fontFamily: fontFamily, fontSize: 18.5, color: p.ink),
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: p.ink,
+        titleTextStyle: TextStyle(fontFamily: fontFamily, fontSize: 15, color: p.text),
+        subtitleTextStyle: TextStyle(fontFamily: fontFamily, fontSize: 12.5, color: p.muted, height: 1.45),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? p.soft : p.card),
+          foregroundColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? p.ink : p.muted),
+          side: WidgetStatePropertyAll(BorderSide(color: p.outline)),
+          textStyle: const WidgetStatePropertyAll(TextStyle(fontFamily: fontFamily, fontSize: 14)),
+          shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+        ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: p.hero,
+        foregroundColor: Colors.white,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: p.primary, linearTrackColor: p.border),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? Colors.white : p.faint),
+        trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? p.heroAlt : p.track),
+        trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: p.primary,
+          textStyle: const TextStyle(fontFamily: fontFamily, fontSize: 14.5),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
       ),
       dividerColor: p.border,
       dividerTheme: DividerThemeData(color: p.border),
@@ -288,7 +323,7 @@ class AppTheme {
         color: p.card,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: const BorderRadius.all(Radius.circular(20)),
+          borderRadius: const BorderRadius.all(Radius.circular(18)),
           side: BorderSide(color: p.border),
         ),
       ),
@@ -312,16 +347,20 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: p.dark ? p.heroAlt : p.primary,
           foregroundColor: Colors.white,
+          minimumSize: const Size(0, 46),
+          textStyle: const TextStyle(fontFamily: fontFamily, fontSize: 15),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: p.primary,
           side: BorderSide(color: p.outline),
+          minimumSize: const Size(0, 46),
+          textStyle: const TextStyle(fontFamily: fontFamily, fontSize: 15),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       ),
       chipTheme: ChipThemeData(
